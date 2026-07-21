@@ -1,0 +1,184 @@
+# ==========================================================================
+# math-attack.spore-starter.toml — the STARTER lane (v3.2).
+#
+# WHAT IT IS
+#   The recommended FIRST run of math-attack. A deliberately tiny polymer: FOUR
+#   nodes, ONE model (claude-opus-4-8), concurrency 1, NO Lean / JVM / Zotero /
+#   deliberation panel / instrumentation. Its whole job is to get a recipient one
+#   inspectable, hashed artifact — a decomposition, one attack, one skeptical
+#   review, and a final trace — before they authorize the full lane
+#   (spore.toml — 15 fixed nodes), the Lean branch, the model matrix, or the seal machinery.
+#
+#   decompose -> proof-attempt -> skeptic -> trace
+#
+#   This is the "make the first five minutes decisive" lane from the v3
+#   premortem review (findings summarized inline; the full report is available
+#   on request via an issue at https://github.com/noogram/sporarium/issues):
+#   start small, inspect the trace, THEN promote to the full lane.
+#
+# WHY A SEPARATE MANIFEST (not a `profile` param on spore.toml)
+#   A spore param CANNOT restructure the fixed-node DAG (node kind is
+#   fixed at parse time — the same limit that makes `observability` a fan-out
+#   gate, not a boolean). So the starter lane is its OWN manifest with its OWN
+#   4-node DAG and its OWN seal (spore_starter.tla + spore_starter.cfg). The
+#   `profile` param on the full spore.toml records the posture and points here.
+#
+# MODEL: every node binds task-work-build (claude-opus-4-8) — ONE tier, so a
+#   recipient with a single model runs the starter lane with no override at all.
+#   This is the mechanically-effective single-model default (see README §6).
+# ==========================================================================
+
+[spore]
+name        = "math-attack-starter"
+version     = 3
+verb        = "germinate"
+description = """
+STARTER lane for the math-attack spore: a 4-node, single-model, no-Lean first
+run (decompose -> proof-attempt -> skeptic -> trace). Get one inspectable, hashed
+attack trace before promoting to the full lane (spore.toml). The LLM firewall
+invariant still holds in spirit — the starter never calls a target 'proved'
+(there is no kernel leg here); it produces a candidate argument, a skeptical
+review, and a trace, and it says so honestly.
+"""
+
+# --------------------------------------------------------------------------
+# Seal — TLC-verified over the 4-node linear chain (spore_starter.tla +
+# spore_starter.cfg; underscore filenames because a TLA+ module name — which must
+# equal its filename stem — cannot contain a hyphen). Same property vocabulary as
+# the full lane MINUS GateFailClosed (the starter has no promotion gate);
+# ArtifactFlow included, so the starter is held to the same artifact-flow bar.
+# --------------------------------------------------------------------------
+[spore.seal]
+module     = "spore_starter.tla"
+config     = "spore_starter.cfg"
+properties = ["Termination", "NoResourceCollision", "DeterministicParametrization", "ArtifactFlow"]
+
+# --------------------------------------------------------------------------
+# ParamSchema — only the two required params. No formal_backend (no Lean here),
+# no subquestions (single target), no observability, no models (one tier).
+# --------------------------------------------------------------------------
+[spore.params.subject]
+type        = "string"
+required    = true
+description = "Short name of the conjecture / problem under attack."
+
+[spore.params.problem_statement]
+type        = "string"
+required    = true
+description = "The verbatim conjecture, phrased 'to be PROVEN or REFUTED, not assumed'."
+
+[spore.params.origin]
+type        = "string"
+default     = ""
+description = "Provenance / context of the conjecture (paper, poser, motivation)."
+
+# --------------------------------------------------------------------------
+# Fleet — the SAME crew fleet.toml as the full lane, but concurrency 1 (one
+# worker at a time — the starter is a single-file walk, not a fan-out).
+# --------------------------------------------------------------------------
+[spore.fleet]
+name            = "math-attack"
+path            = "fleet.toml"
+concurrency_cap = 1
+isolation       = "worktree"
+
+# --------------------------------------------------------------------------
+# One formula tier only: task-work-build (claude-opus-4-8). Every node binds it,
+# so the starter lane runs on a single model with no override needed.
+# --------------------------------------------------------------------------
+[spore.formulas.task-work-build]
+path          = "formulas/task-work-build.formula.toml"
+description   = "task-work pinned to claude-opus-4-8 — the single starter-lane model tier."
+
+# ==========================================================================
+# The DAG — a linear 4-node chain (decompose -> proof-attempt -> skeptic -> trace)
+# ==========================================================================
+
+[[spore.node]]
+id          = "decompose"
+kind        = "fixed"
+formula     = "task-work-build"
+description = "Restate the conjecture formally, build the proof-obligation tree, enumerate strategies + falsifiability tests."
+[spore.node.vars]
+crew_role = "concept-writer"
+topic = """
+MATH-ATTACK on ${params.subject} (STARTER lane). Conjecture to be PROVEN or \
+REFUTED, not assumed: ${params.problem_statement}. Origin/context: \
+${params.origin}. DECOMPOSE the attack surface into decompose.md: (a) the formal \
+restatement; (b) the proof-obligation tree — the sub-claims, lemmas and \
+reductions any full proof or refutation must pass through; (c) candidate \
+strategies (direct, contrapositive, contradiction, construction, counterexample \
+search); (d) the falsifiability tests whose failure would REFUTE the conjecture. \
+This is the STARTER lane: no Lean backend, no fan-out — one clean decomposition."""
+
+[[spore.node]]
+id          = "proof-attempt"
+kind        = "fixed"
+formula     = "task-work-build"
+description = "Attack the target: prove or refute in full rigor. Never asserts the conjecture — there is no kernel leg in the starter lane, so 'proved' is never claimed here."
+[spore.node.vars]
+crew_role = "proofsmith"
+topic = """
+MATH-ATTACK ${params.subject} — PROOF ATTEMPT (STARTER lane). Conjecture under \
+attack: ${params.problem_statement}. From decompose.md, attempt to PROVE or \
+REFUTE the conjecture. Emit proof-attempt.md: the argument in full rigor, every \
+step justified or flagged as a gap; if refuted, the explicit counterexample; if \
+stuck, the precise obstruction. Do NOT assert the conjecture true — the starter \
+lane has NO kernel leg, so 'proved' is never the word here; you produce a \
+candidate argument the skeptic then red-teams. Promote to the full lane \
+(spore.toml) for the Lean kernel verdict."""
+
+[[spore.node]]
+id          = "skeptic"
+kind        = "fixed"
+formula     = "task-work-build"
+description = "Adversarial review of the attempt. faults.md with BLOCKER/MAJOR/MINOR; honest about what was and was not checked."
+[spore.node.vars]
+crew_role = "skeptic"
+topic = """
+MATH-ATTACK ${params.subject} — SKEPTIC (STARTER lane). You are the adversary. \
+Read proof-attempt.md for ${params.problem_statement}. Hunt for: unjustified \
+steps, hidden assumptions, circular reasoning, mis-cited lemmas, and \
+scale-limited claims passed off as general. Write faults.md: one numbered \
+finding per fault, each tagged BLOCKER / MAJOR / MINOR. If genuinely clean, say \
+so with the checks you ran. This is the starter lane's only verification leg — \
+there is no kernel and no citation gate here; say plainly what remains unverified."""
+
+# trace: the final trace of the starter run (v3.2). In the starter lane it is the
+# SINK (blocked-by skeptic) — the closing capture of the whole 4-node walk. In the
+# full lane trace is a root+leaf (always-on); here the chain is short enough that
+# the sink position captures the complete run.
+[[spore.node]]
+id          = "trace"
+kind        = "fixed"
+formula     = "task-work-build"
+description = "Append-only trace of the starter run: raw events + each node's brief + artifact hashes. The inspectable consolation artifact the recipient reads before promoting to the full lane."
+[spore.node.vars]
+crew_role = "collector"
+topic = """
+MATH-ATTACK ${params.subject} — TRACE (STARTER lane). Capture the append-only \
+trace of this 4-node run under trace/: the raw cosmon events (nucleation / \
+tackle / evolve / complete) for THIS polymer, each node's germinated brief \
+(topic + formula + crew_role), and a content hash + byte count for decompose.md, \
+proof-attempt.md and faults.md. READ-ONLY on .cosmon/state/ — copy into trace/, \
+never mutate. Emit trace/events.jsonl, trace/briefs.md, trace/hashes.tsv. This \
+is what the recipient inspects to decide whether to promote to the full lane: it \
+must let a third party reconstruct what ran, on what model, producing what bytes."""
+
+# ==========================================================================
+# Edges — linear chain.
+# ==========================================================================
+[[spore.edge]]
+from = "decompose"
+to   = "proof-attempt"
+type = "feeds"
+
+[[spore.edge]]
+from = "proof-attempt"
+to   = "skeptic"
+type = "feeds"
+
+[[spore.edge]]
+from = "skeptic"
+to   = "trace"
+type = "feeds"

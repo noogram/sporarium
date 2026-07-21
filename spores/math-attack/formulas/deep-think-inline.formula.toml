@@ -1,0 +1,148 @@
+formula = "deep-think-inline"
+version = 1
+description = """
+Tier-0 inline-panel deliberation — a multi-persona panel that stress-tests
+an artifact and RECOMMENDS, run inline by one worker (never nucleates
+children, so any parent may commission it). Lifted from an earlier
+research mission (flow-matching-gaussians,
+https://github.com/noogram-labs/flow-matching-gaussians — a Lean-certified
+proof mission this architecture descends from) and generalized off that
+problem; in this spore it
+drives the `frame-deliberation` node, which stress-tests the decomposition
+and the falsifiability tests BEFORE compute is spent downstream.
+
+The four steps carry the deep-think discipline verbatim (strate-count,
+per-persona substitution hypotheses, frame-question coverage table) and
+diverge only at the end: this leaf RECOMMENDS, it does not decompose.
+
+Model pin: every step pins `model = "claude-fable-5"` — a deliberation
+panel is the archetypal deep-reasoning step. Override with
+`cs tackle --model` / `ANTHROPIC_MODEL` (both rank above the pin). See
+README "Model access".
+
+Panel selection uses the `panel` variable:
+  - panel="auto" (or unset): the worker chooses 3-5 personas from ITS OWN
+    available Claude Code subagents, matched to the topic. This is the
+    PORTABLE default — no persona file ships in this zip.
+  - panel="wheeler,feynman,godel": an explicit comma-separated list. If a
+    named persona is unavailable on the recipient's machine, the worker
+    falls back to auto-selecting the closest available disposition
+    (question-framing, first-principles, formal-limits) and says so.
+
+⚠ ARTIFACT PATHS: write all artifacts (frame.md, responses/,
+synthesis.md, outcomes.md) to the MOLECULE STATE DIRECTORY (the
+`molecule_dir` field of `cs --json observe {mol_id}`), NEVER the worktree
+(`.worktrees/{mol_id}/`), which `cs done` destroys.
+"""
+id_prefix = "delib"
+
+# Tier 0 — leaf. Runs the panel inline and RECOMMENDS; never nucleates.
+[tier]
+level = 0
+
+[[steps]]
+id = "frame"
+title = "Frame the question and select the panel"
+description = """
+Frame the question precisely. Identify the artifact under review (here:
+the decomposition and the falsifiability tests the upstream node
+produced). Select 3-5 panel personas — either from `--var panel=<list>`
+or auto-selected from the worker's OWN available Claude Code subagents by
+topic match. Draft a focused prompt per persona giving them the artifact,
+the question, and what kind of answer their perspective should return.
+
+## Strate-count and substitution hypotheses (mandatory)
+
+Before drafting per-persona prompts, frame.md MUST declare:
+
+1. **Strate-count** — how many distinct sub-questions (strates Q1..Qn) the
+   commissioning prompt decomposes into. Two orthogonal properties in one
+   sentence are two strates, not one.
+2. **Per-persona substitution hypotheses** — for each panelist, the most
+   likely EASIER question they might answer instead of the hard one (their
+   known gravitational pull). These are the falsifiers the synthesize step
+   checks against; without them, silent substitution is undetectable.
+3. **Anti-substitution constraints** (recommended) — per strate, a sentence
+   saying what the answer must NOT be.
+"""
+acceptance = "MOLECULE_DIR/frame.md written with (a) strate-count + numbered Qn sub-questions and (b) per-persona substitution hypotheses. Panel chosen and per-persona prompts drafted."
+acceptance_artifacts = ["frame.md"]
+model = "claude-fable-5"
+
+[[steps]]
+id = "dispatch"
+title = "Dispatch panel in parallel"
+description = """
+Invoke each panel member in parallel via the Agent tool with its
+per-persona prompt. Collect raw responses into
+MOLECULE_DIR/responses/<persona>.md — one file per persona, untouched.
+"""
+needs = ["frame"]
+acceptance = "N response files written to MOLECULE_DIR/responses/<persona>.md"
+acceptance_artifacts = ["responses/"]
+model = "claude-fable-5"
+
+[[steps]]
+id = "synthesize"
+title = "Synthesize convergences and divergences"
+description = """
+Read all responses. Identify convergences (panel agrees), divergences
+(disagreement — and why), and surprising insights. Structure as markdown:
+per-persona summary followed by an integrated synthesis that calls out the
+decision-relevant tension points.
+
+## Frame-question coverage checklist (mandatory)
+
+synthesis.md MUST include a **frame-question coverage table** accounting
+for every Qn from the frame. Each question gets exactly one mark:
+
+| Q frame | Treated | Substituted | Declined-with-rationale | Silent |
+|---------|---------|-------------|-------------------------|--------|
+
+- **Treated**: answered as framed.
+- **Substituted**: answered an easier/adjacent question (mark (*), say what
+  and by whom).
+- **Declined-with-rationale**: deliberately out of scope, reason stated.
+- **Silent**: nobody addressed it, no rationale. **This is the alarm
+  signal** — flag it prominently and recommend a follow-up.
+"""
+needs = ["dispatch"]
+acceptance = "MOLECULE_DIR/synthesis.md complete with per-persona summaries, integrated synthesis, AND the frame-question coverage table (every Qn accounted for)."
+acceptance_artifacts = ["synthesis.md"]
+model = "claude-fable-5"
+
+[[steps]]
+id = "recommend"
+title = "Produce a recommendation document (NO nucleation)"
+description = """
+Convert the synthesis into a standalone recommendation at
+MOLECULE_DIR/outcomes.md — the leaf's terminal artifact.
+
+⚠ TIER-0 CONTRACT — DO NOT NUCLEATE. This formula is a leaf; it MUST NOT
+call `cs nucleate`. If follow-up is warranted, ENUMERATE the proposed
+molecules as RECOMMENDATIONS (topic / kind / blocked-by / temp tag [a
+backlog-urgency label: hot / warm / cold] / one-line briefing seed) for the
+downstream DAG to honor — do not create
+them. Here the recommendation feeds `source-ledger` and the rest of the
+attack: name concretely which decomposition branches or falsifiability
+tests the panel judged weakest and what must change before compute is
+spent.
+
+Structure:
+
+  # Recommendation — {topic}
+  **Commissioned by:** {parent node / operator}
+  **Panel:** {personas}
+  ## Verdict
+  {one-paragraph decision-relevant conclusion}
+  ## Recommended adjustments to the decomposition / falsifiability tests
+  {enumerated, each with rationale}
+
+PORTABILITY: use paths RELATIVE to the project root, never absolute.
+CITEKEY DISCIPLINE: pair any textual locator (`Prop. 4.1`, `§3.2`, `p.42`)
+with a citekey or a relative-path+anchor, never the bare locator.
+"""
+needs = ["synthesize"]
+acceptance = "MOLECULE_DIR/outcomes.md written as a recommendation: verdict + enumerated adjustments to the decomposition / falsifiability tests. NO molecules nucleated."
+acceptance_artifacts = ["outcomes.md"]
+model = "claude-fable-5"

@@ -1,0 +1,61 @@
+formula = "citation-audit"
+version = 1
+description = """
+Audit citations in a mathematical artefact (L0/L1/L2/L3 protocol).
+
+Model pin: every step pins `model = "claude-sonnet-5"` — the resolution
+pass is a mechanical locator-match, not a reasoning problem, so it runs
+on the observer tier (see README "Model access"; override with
+`cs tackle --model` / `ANTHROPIC_MODEL`, both rank above the pin).
+"""
+id_prefix = "cite"
+
+# Tier 0 — leaf formula, no child nucleation.
+[tier]
+level = 0
+
+[[steps]]
+id = "parse"
+title = "Parse citations + locators"
+description = """
+Extract every `\\cite{...}` (LaTeX) and `[text](url)` (markdown) entry \
+from the target artefact. Capture citekey, locator (page / prop / §), \
+and surrounding claim sentence. Emit `citations.json` in the MOLECULE \
+STATE DIRECTORY (the `molecule_dir` field of `cs --json observe \
+{mol_id}`), NEVER the worktree (`.worktrees/{mol_id}/`), which `cs done` \
+destroys.
+"""
+acceptance = "citations.json emitted listing every \\cite with (citekey, locator, claim_context)"
+model = "claude-sonnet-5"
+
+[[steps]]
+id = "resolve"
+title = "Run L0/L1/L2/L3 protocol per citation"
+description = """
+For each citation in `citations.json`, run the L0/L1/L2/L3 tier protocol \
+(tiers defined in the spore README §4) \
+(provenance of the claim → does the cited source exist and match its \
+metadata → does the cited locator support the exact statement invoked). \
+If a dedicated `citation-auditor` agent or a reference-manager tool \
+(e.g. Zotero) is available, use it; otherwise perform the audit inline \
+by resolving each DOI/arXiv id directly. Produce a verdict (tier, \
+confidence, evidence) per entry. L1 dominates L2 — if L1 decides, \
+short-circuit. Output: `verification-report.md` in the MOLECULE STATE \
+DIRECTORY (same convention as `citations.json` above).
+"""
+needs = ["parse"]
+acceptance = "verification-report.md emitted with (tier, confidence, evidence) per entry"
+model = "claude-sonnet-5"
+
+[[steps]]
+id = "escalate"
+title = "File escalations for L3 / L2_weak"
+description = """
+Entries with tier `L3` or `L2_weak` require human review. Append \
+one escalation row per such entry to `escalations.md` in the MOLECULE \
+STATE DIRECTORY (target, citekey, locator, tier, reason, proposed \
+action). If no escalations, record an empty-delta note.
+"""
+needs = ["resolve"]
+acceptance = "escalations.md updated OR empty-delta noted"
+model = "claude-sonnet-5"

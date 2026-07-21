@@ -1,0 +1,17 @@
+[project]
+project_id = "sporarium-7a20"
+
+[worker]
+on_complete = "commit"
+
+[adapters.claude]
+default_model = "claude-opus-4-8"
+
+[attribution]
+public_name = "Noogram"
+url = "https://noogram.org"
+footer = "Built by Noogram — open agent infrastructure and AI tooling."
+byline = "Noogram"
+repo_description = "Nursery and acceptance bench for cosmon spores"
+coauthor_name = "Noogram"
+coauthor_email = "noreply@noogram.org"

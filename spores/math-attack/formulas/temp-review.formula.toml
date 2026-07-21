@@ -1,0 +1,109 @@
+formula = "temp-review"
+version = 1
+description = """
+REVIEW-AS-FORMULA — the structured, fail-closed editorial review the
+`editorial-verdict` node binds to (replacing a prose task-work prompt).
+A review is not a paragraph of intent; it is a formula with explicit
+steps and tabular, fail-closed acceptance — the same discipline a
+backlog-temperature sweep applies (scan -> triage -> report with per-item
+tables), re-pointed here at the paper.
+
+⚠ NAMING NOTE (surfaced back to the cosmon project; see README §11 "Deliberation & adversarial review"):
+The original `temp-review.formula.toml` was literally a *backlog-temperature*
+sweep (categorize pending molecules by their `temp:*` tag — a backlog-urgency
+label such as `temp:hot` / `temp:warm` / `temp:cold`). Its VERBATIM content
+is not a paper review, so binding the paper's editorial gate to it as-is
+would ship backlog-triage steps as the review. We lifted its
+review-as-formula *discipline* — structured steps + fail-closed tabular
+acceptance + author != scorer — and instantiated it as this editorial
+review. The alias is kept `temp-review` so the operator's binding
+("editorial-verdict stays on temp-review") holds by name.
+
+AUTHOR != SCORER (structural, load-bearing): this formula runs on the
+`editorial-verdict` node — a DIFFERENT molecule and a DIFFERENT worker
+(crew_role=reviewer) than the `write-paper` node (crew_role=writer) that
+authored the artifact. The reviewer SCORES; it does not rewrite. The
+spore DAG enforces the separation by construction: same discipline holds
+at the other gates — `skeptic` (separate from proof-attempt) and the
+split `evidence-gate` / `citation-gate` (separate from synthesize/write-paper).
+
+Model pin: every step pins `model = "claude-fable-5"` — an adversarial
+review is a deep-reasoning step. Override with `cs tackle --model` /
+`ANTHROPIC_MODEL` (both rank above the pin). See README "Model access".
+"""
+id_prefix = "review"
+
+# Tier 0 — leaf formula, no child nucleation.
+[tier]
+level = 0
+
+[[steps]]
+id = "map"
+title = "Map every claim and citation the paper makes"
+description = """
+Read the paper (write-paper's artifact), the pre-synthesis evidence
+verdict (evidence-verdict.md, PASS / DEGRADED / BLOCKED), the post-write
+citation audit (verification-report.md, PASS / BLOCKED), the skeptic
+faults (faults.md) and the source ledger (source-ledger.md). Build
+MOLECULE_DIR/claims-ledger.md: one row per CLAIM the paper asserts and per
+citation it invokes, with columns `claim | asserted-strength | supported-by
+(evidence-gate leg / citation-gate report / ledger row / proof artifact)`.
+
+FAIL-CLOSED: if the paper artifact is ABSENT or empty, the review cannot
+proceed — record that and carry a REWRITE verdict forward. Absent
+evidence is never a pass.
+"""
+acceptance = "MOLECULE_DIR/claims-ledger.md written: every claim and citation the paper makes, each with its purported support. Absent paper => recorded as REWRITE."
+model = "claude-fable-5"
+
+[[steps]]
+id = "adversarial-verify"
+title = "Adversarially verify each claim against the evidence"
+description = """
+For each row of claims-ledger.md, adversarially check — assume the claim
+is an OVERCLAIM until the evidence forces otherwise:
+
+  1. STRENGTH — the paper claims 'proved' ONLY where the kernel leg
+     established it (evidence-gate verdict PASS, or DEGRADED with the
+     honest caveat). Any 'proved' beyond the kernel leg is an OVERCLAIM.
+  2. CITATIONS — the citation-gate's verification-report is PASS and every
+     citation resolves to a real source-ledger row supporting the exact
+     statement invoked (no fabricated or mis-located citation).
+  3. FAULTS — every skeptic finding tagged BLOCKER (and each accepted
+     MAJOR) is addressed in the paper, not silently dropped.
+
+Tag each row CONFIRMED / OVERCLAIM / UNSUPPORTED-CITATION /
+UNADDRESSED-FAULT. Write the verdicts back into claims-ledger.md.
+
+AUTHOR != SCORER: you are the reviewer, a different worker than the
+paper's author. SCORE the claims; do NOT rewrite the paper. If a claim
+must change, that is a REWRITE verdict for the author, not an edit you
+make.
+"""
+needs = ["map"]
+acceptance = "Every claims-ledger.md row tagged CONFIRMED / OVERCLAIM / UNSUPPORTED-CITATION / UNADDRESSED-FAULT with evidence. No edits made to the paper itself."
+model = "claude-fable-5"
+
+[[steps]]
+id = "verdict"
+title = "Emit the fail-closed SHIP / REWRITE verdict"
+description = """
+Fold the tagged ledger into MOLECULE_DIR/editorial-verdict.md:
+
+  - The per-claim verdict table (claim | tag | evidence).
+  - A one-line overall verdict: SHIP or REWRITE.
+  - A DISSENT section: the most interesting tension in the work
+    (>= 1 substantive entry). An editorial-verdict.md with no dissent
+    section BLOCKS promotion (anti-groupthink) — never leave it empty.
+
+FAIL-CLOSED rule: SHIP only if ALL hold — zero OVERCLAIM, zero
+UNSUPPORTED-CITATION, zero UNADDRESSED-FAULT, the evidence-gate verdict is
+PASS or an honest DEGRADED, AND the citation-gate verification-report is
+PASS. Any failing check, or any absent evidence (absent evidence-verdict.md
+OR absent verification-report.md), => REWRITE with the failing rows named.
+Never SHIP on absent evidence. The delivery posture is the operator's call,
+not this gate's.
+"""
+needs = ["adversarial-verify"]
+acceptance = "MOLECULE_DIR/editorial-verdict.md written: per-claim verdict table + overall SHIP/REWRITE + a non-empty DISSENT section. SHIP only when zero OVERCLAIM/UNSUPPORTED/UNADDRESSED, evidence-gate is PASS/DEGRADED, and citation-gate report is PASS; absent evidence => REWRITE. Missing dissent section BLOCKS promotion."
+model = "claude-fable-5"

@@ -1,0 +1,62 @@
+formula = "editorial-work"
+version = 1
+description = """
+Author a prose deliverable — here, the paper. Lifted from an earlier
+research mission (flow-matching-gaussians,
+https://github.com/noogram-labs/flow-matching-gaussians — a Lean-certified
+proof mission this architecture descends from) and generalized off that
+problem. Replaces
+`task-work` for nodes whose deliverable is a DOCUMENT, not compiled code:
+the two steps mirror implement/verify, but the acceptance is editorial
+(coherence, completeness, citation fidelity), not a cargo gate. The
+worker's verification is reading-based: does the artifact say what the
+brief asked, is it internally consistent, does every citation resolve?
+
+Model pin: every step pins `model = "claude-opus-4-8"` — the writing
+tier. Override with `cs tackle --model` / `ANTHROPIC_MODEL` (both rank
+above the pin). See README "Model access".
+"""
+id_prefix = "edit"
+
+# Tier 0 — leaf formula, no child nucleation.
+[tier]
+level = 0
+
+[[steps]]
+id = "draft"
+title = "Draft the editorial artifact"
+description = """
+Produce the deliverable described in the brief (here: the paper, from
+synthesis.md). Exit criteria (all must hold):
+  - The artifact exists at the expected location.
+  - It is internally consistent — no contradictory claims, no dangling
+    cross-references, no placeholder text left behind.
+  - Sources are cited where applicable; EVERY citation traces to a
+    source-ledger row.
+  - It addresses every point the brief enumerates; missing points are
+    flagged explicitly in a log, not silently dropped.
+  - It claims 'proved' ONLY for targets the kernel leg established.
+"""
+acceptance = "Artifact produced, internally consistent, every citation traces to a ledger row, all brief points addressed or flagged, no 'proved' beyond the kernel leg"
+model = "claude-opus-4-8"
+
+[[steps]]
+id = "review"
+title = "Review the draft for coherence and compliance"
+description = """
+Review the artifact from the draft step (self-review at authoring time;
+the INDEPENDENT adversarial review is a SEPARATE molecule downstream —
+the editorial-verdict node — never this same worker). Checklist:
+  - Coherence: reads as one unified document; no contradictions, no tone
+    shifts, no orphaned definitions.
+  - Completeness: every brief requirement has a corresponding section.
+  - Compliance: respects the constraints named in the brief (delivery
+    posture, attribution, confidentiality).
+  - Sources: every cited reference is real and correctly attributed;
+    spot-check at least one citation against its source.
+Fix issues in place and note the fixes in a log. Succeeds when no
+unresolved issue remains.
+"""
+needs = ["draft"]
+acceptance = "Artifact reviewed for coherence, completeness, and compliance; all issues resolved or explicitly deferred with justification"
+model = "claude-opus-4-8"

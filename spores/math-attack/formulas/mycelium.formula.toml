@@ -1,0 +1,39 @@
+# Chronicle observation layer — fold over drained DAG artifacts.
+# Single-observer design: one chronicler folds over ALL artifacts at once
+# (as opposed to one observer per node).
+
+formula = "mycelium"
+version = 1
+description = """
+Chronicle observation layer — fold over drained DAG artifacts.
+
+Model pin: every step pins `model = "claude-sonnet-5"` — the chronicle
+fold is faithful transcription (observer tier), not deep reasoning.
+Override with `cs tackle --model` / `ANTHROPIC_MODEL` (both rank above
+the pin). See README "Model access".
+"""
+id_prefix = "mycelium"
+
+[[steps]]
+id = "germinate"
+title = "Survey the drained DAG"
+description = """Survey the drained DAG (cs deps <mission> --transitive), list all completed
+molecules with their artifact paths. Write mycelium-plan.md listing traversal
+order + artifact inventory."""
+acceptance = "mycelium-plan.md exists with molecule inventory and traversal order"
+model = "claude-sonnet-5"
+
+[[steps]]
+id = "inoculate"
+title = "Inoculate — single hypha fold"
+description = """The single hypha reads ALL completed molecule artifacts (briefing.md, log.md,
+synthesis.md, responses/) + the current CHRONICLES.md. Produces 0-3 chronicle
+entries appended to docs/lore/CHRONICLES.md. Follows chronicle criteria:
+illuminates a principle, not routine. Commits.
+
+Fold interface: (accumulated_chronicles, molecule_artifacts) → updated_chronicles
+This release invokes the fold once; a future revision may factor it into N
+sequential invocations."""
+needs = ["germinate"]
+acceptance = "CHRONICLES.md updated (or unchanged if nothing merits a chronicle entry), committed"
+model = "claude-sonnet-5"

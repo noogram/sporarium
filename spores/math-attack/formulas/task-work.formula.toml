@@ -1,0 +1,38 @@
+formula = "task-work"
+version = 1
+description = """
+Execute a concrete task — the generic agentic base (implement -> verify), with
+NO model pin. It is the reference shape the three model-tier variants
+(task-work-{reasoning,build,mechanical}) derive from; no spore node binds this
+base directly (each node binds a tier variant so a per-node model allocation can
+travel on the formula step). See README "Model access".
+"""
+id_prefix = "task"
+
+# The task statement. Required and default-free: a task-work molecule with a
+# blank `topic` carries no brief, so germination refuses to birth it.
+[vars.topic]
+description = "The concrete task to execute, stated in one or more sentences."
+required = true
+
+# Tier 0 — leaf formula, no child nucleation.
+[tier]
+level = 0
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+description = "Do the work described in the brief. Emit the leg's artifact."
+acceptance = "Implementation complete, the leg's artifact emitted"
+
+[[steps]]
+id = "verify"
+title = "Verify and validate"
+description = """
+Verify the leg's artifact against its brief: internally consistent, every
+claim justified or flagged as a gap, sources cited where applicable. If the
+leg emitted code, run the relevant build/test and report the exit status
+honestly. Fix any issues.
+"""
+needs = ["implement"]
+acceptance = "Artifact verified against its brief; build/test (if code) reported honestly"

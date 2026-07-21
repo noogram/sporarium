@@ -1,0 +1,16 @@
+# Cosmon project scaffold: config and formulas are tracked; live state,
+# molecule transcripts, and the registry stay local (internal working data).
+.cosmon/state/
+.cosmon/molecules/
+.cosmon/registry.sqlite
+.cosmon/surfaces.toml
+.gitleaks.toml
+
+# Disposable germination sandboxes and per-export artifacts.
+bench/
+spores/**/ro-crate-metadata.json
+spores/**/states/
+
+# Local + privately-archived; never in the public tree.
+drops/
+runs/

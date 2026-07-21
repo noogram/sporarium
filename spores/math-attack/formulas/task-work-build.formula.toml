@@ -1,0 +1,45 @@
+formula = "task-work-build"
+version = 1
+description = """
+Execute a concrete task on a BUILD / WRITING model pin.
+
+Identical in shape to `task-work` (implement -> verify), but every step
+pins `model = "claude-opus-4-8"`. Bind the nodes whose value is careful
+construction — building notebooks, discharging the Lean probe, the
+source ledger, the concept cards, the Lean skeleton, the synthesis — to
+this formula. The pin travels on the formula step (the only in-zip
+per-node model channel; see `task-work-reasoning` for the mechanism and
+the override path).
+
+GRACEFUL DEGRADATION: the pin is inert until tackle; override with
+`cs tackle <id> --model <m>` or `ANTHROPIC_MODEL=<m>` (both rank above
+the pin). See README "Model access".
+"""
+id_prefix = "task"
+
+[vars.topic]
+description = "The concrete task to execute, stated in one or more sentences."
+required = true
+
+[tier]
+level = 0
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+description = "Do the work. Read the project's CLAUDE.md for conventions."
+acceptance = "Implementation complete, the leg's artifact emitted"
+model = "claude-opus-4-8"
+
+[[steps]]
+id = "verify"
+title = "Verify and validate"
+description = """
+Verify the leg's artifact against its brief: internally consistent, every
+claim justified or flagged as a gap, sources cited where applicable. If
+the leg emitted code (notebooks, Lean), run the relevant build/test and
+report the exit status honestly. Fix any issues.
+"""
+needs = ["implement"]
+acceptance = "Artifact verified against its brief; build/test (if code) reported honestly"
+model = "claude-opus-4-8"

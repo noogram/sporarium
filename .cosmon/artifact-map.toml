@@ -1,0 +1,38 @@
+# Artifact map — sporarium: every tracked path must classify to a genre
+# with a public audience.
+# genre → audience. `cs artifacts audit` fails if a tracked file is
+# non-public. Public = the spores and the acceptance protocol. solo =
+# local working data (live state, molecule transcripts, bench sandboxes,
+# drops, acceptance reports) — gitignored, archived in a private archive
+# repository (not publicly accessible) at milestones, never pushed here.
+
+# ── public: the shipped surface ──────────────────────────────────────
+[spores]
+location = ["spores/**/*"]
+audience = "public"
+
+[top-docs]
+location = ["README.md", "CLAUDE.md", "PROTOCOL.md", ".gitignore", "LICENSE-MIT", "LICENSE-APACHE"]
+audience = "public"
+
+[artifact-map]
+location = [".cosmon/artifact-map.toml"]
+audience = "public"
+
+[cosmon-scaffold]
+location = [".cosmon/config.toml", ".cosmon/formulas/**/*"]
+audience = "public"
+
+# ── solo: local working data, never pushed (gitignored) ──────────────
+[cosmon-state]
+location = [".cosmon/**/*"]
+audience = "solo"
+
+[bench]
+location = ["bench/**/*", "drops/**/*", "runs/**/*"]
+audience = "solo"
+
+# ── catch-all: every remaining path classifies here — must stay LAST ─
+[misc]
+location = ["**/*"]
+audience = "public"

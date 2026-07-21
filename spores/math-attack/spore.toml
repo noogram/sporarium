@@ -1,0 +1,883 @@
+# ==========================================================================
+# math-attack.spore.toml — a shareable "hard-math-attack" polymer
+#
+# WHAT IT IS
+#   A spore is a parameterizable template of a WHOLE polymer: a fleet + per-node
+#   formulas + a ParamSchema + a DAG of typed edges + an (unverified) .tla seal.
+#   Fill the params, run `cs spore run`, and a full attack on a hard conjecture
+#   germinates. A deliberation panel stress-tests the decomposition first; then
+#   two branches fork from the concept cards and run IN PARALLEL, converging at
+#   the EVIDENCE gate (the parallel-branch topology — v2, + v3.1 frame-deliberation,
+#   + v3.2 split gate):
+#     open:      decompose -> frame-deliberation (panel) -> source-ledger -> concept cards
+#     informal:  concept cards -> proof attempts || notebooks -> skeptic
+#     formal:    concept cards -> Lean skeleton -> Lean probe || red-team corpus
+#     converge:  { skeptic, Lean probe, red-team corpus } -> evidence-gate
+#                -> synthesis -> paper -> citation-gate -> editorial verdict -> chronicle.
+#   The Lean skeleton is the fidelity anchor; forking it early (not after the
+#   skeptic) pins the theorem statement WHILE the informal proof is written, so
+#   statement drift cannot creep in during the skeptic loop.
+#
+# v3.2 HARDENING WAVE (from a premortem review of v3 — "imagine this shipped and
+# failed; list why". The numbered findings below are summarized inline; the full
+# premortem report is available on request via an issue at
+# https://github.com/noogram/sporarium/issues):
+#   * SPLIT GATE: the single seal-gate is split into (a) evidence-gate BEFORE
+#     synthesize (kernel + skeptic legs over proof/notebook/lean/corpus artifacts
+#     that already exist) and (b) citation-gate AFTER write-paper (the citation
+#     audit over the paper that now exists). The old design ran the citation audit
+#     over a paper produced DOWNSTREAM — a deterministic artifact-flow deadlock.
+#   * ARTIFACT-FLOW SEAL: spore.tla now carries a Produces/Requires map per
+#     node and a checked property ArtifactFlow (every Requires has an upstream
+#     Produces). A gate-flow bug of that class now VIOLATES the seal.
+#   * TRACE ALWAYS-ON: a `trace` root node germinates unconditionally (not
+#     gated by observability, not downstream of chronicle) — an append-only
+#     sidecar that survives a downstream stall. Charts stay optional (observability).
+#   * SENTINELS: fleet.toml no longer carries placeholder sentinels.
+#   * STARTER LANE: spore-starter.toml is the recommended FIRST run — 4 nodes,
+#     one model, concurrency 1, no Lean/JVM. This file is the FULL lane.
+#   The seal's boundary (what it does and does NOT certify) is documented in
+#   README §"What the seal certifies" — the seal proves the ABSTRACT bounded-DAG
+#   gate + artifact-flow properties, NOT that a worker can start, reach a model,
+#   or produce a non-empty artifact (accepted risk).
+#
+# RECIPIENT QUICKSTART (run from inside spores/math-attack/; see README.md for
+# the full walk-through):
+#   cs spore validate spore.toml \
+#       --var subject="Firoozbakht's conjecture" \
+#       --var problem_statement="p(n+1)^(1/(n+1)) < p(n)^(1/n) for all n>=1, to be PROVEN or REFUTED, not assumed"
+#   cs spore run spore.toml --var ... --allow-unchecked-seal   # see SEAL HONESTY
+#   cs spore export spore.toml --out dist/
+#
+# SEAL HONESTY: the [spore.seal] proof (spore.tla + spore.cfg) is
+# REAL and passes TLC. But a released `cs` (>= 0.2.1) reports "TLC unavailable" —
+# the TLC-verify wiring is not in any released binary yet — so `cs spore run`
+# fails closed and you germinate with `--allow-unchecked-seal` (the status line
+# stays honest: "seal: present, NOT verified"). Verify the proof yourself with
+# the direct TLC command in README §10. This run used a development build of `cs`
+# (ahead of 0.2.1); validate and germination work on any recent `cs`, and the
+# development build verifies the seal inline, printing "seal: verified <hash>"
+# with no flag. (This block and README §0/§2 state the same thing — keep in sync.)
+#
+# LIFTED, NOT REINVENTED: every piece below was generalized from an earlier
+# research mission (flow-matching-gaussians,
+# https://github.com/noogram-labs/flow-matching-gaussians — a Lean-certified
+# proof mission this architecture descends from) and shipped filled in this
+# bundle (no external file required).
+#   * the crew fleet.toml (v3: a research-grade verification fleet — a
+#     COGNITION sub-fleet of 9 named roles (sourcer / concept-writer / coder /
+#     proofsmith / skeptic / synthesizer / writer / editor / reviewer), the
+#     FORMAL trio (kernel-engineer / probe-engineer / red-team-mathematician),
+#     an optional INSTRUMENTATION sub-fleet (collector / dataviz / narrator),
+#     plus the hypha observation layer + LLM-firewall constitution + graded
+#     promotion ladder + 15-category adversarial corpus)
+#   * falsifiability + kernel-verdict invariant (the "no proof without a kernel
+#     verdict" discipline)
+#   * citation seal leg   (the L0/L1/L2/L3 locator-match audit)
+#   * chronicle fold      (the mycelium observation layer)
+#   * deliberation panel  (deep-think-inline — the frame-deliberation, v3.1)
+#   * editorial authoring (editorial-work — write-paper, v3.1)
+#   * review-as-formula   (temp-review discipline — editorial-verdict, v3.1)
+#   * per-node model pins  (a `model =` pin on each formula step, v3.1 —
+#     task-work-{reasoning,build,mechanical})
+#
+# NODE -> CREW ROLE BINDING (v3): the spore format has no dedicated role field on
+# a node, and the spore->nucleate path does not carry `--assign`; the ONLY channel
+# that survives germination onto a recipient machine is a node's [spore.node.vars].
+# So each node binds its crew role via a `crew_role` var — pure data, it travels in
+# the zip with zero extra config, and the germinated molecule carries it for the
+# worker to read the matching briefing from the shipped fleet.toml. (This is the
+# spore analogue of a formula-per-role design; v3.1 pushes it further — the model
+# tier ALSO travels per-node via the formula each node binds, see "LIFTED" above.)
+# ==========================================================================
+
+[spore]
+name        = "math-attack"
+version     = 3
+verb        = "germinate"    # spore -> polymer, the parallel of nucleate (formula -> molecule)
+description = """
+Germinate a full hard-math-attack polymer: attack a stated conjecture with a
+proof/refutation pipeline whose non-negotiable invariant is that no target
+reaches "proved" without a mechanical kernel verdict (Lean `lake build` exit 0,
+grep-clean of sorry/axiom). The LLM emits proof terms and prose; the kernel
+alone authors the verdict (the LLM firewall). Computation corroborates or
+refutes; it never constitutes the proof. When formal_backend = none the Lean
+branch is honestly skipped and the seal degrades to the skeptic + editor legs.
+"""
+
+# --------------------------------------------------------------------------
+# Seal — a TLC proof over spore.tla + spore.cfg (five properties,
+# ~1050 distinct states, green; re-verify with the direct command below).
+# Termination         : the DAG is acyclic and the fan-out is bounded by a param
+#                       list, so every germinated polymer drains — no unbounded
+#                       foaming, no cycle.
+# GateFailClosed      : (load-bearing) the evidence-gate, citation-gate and
+#                       editorial-verdict refuse on ABSENT evidence — no leg
+#                       silently degrades to "pass".
+# NoResourceCollision : each node writes one path and fan-out paths carry the
+#                       subquestion index, so parallel writers never alias files.
+# DeterministicParametrization : the same params yield the same expansion — the
+#                       node set is a pure function of `subquestions` and
+#                       `observability` (|Nodes| = 15 + 2*|subquestions|
+#                       + 3*|observability|; the 15 fixed nodes include trace
+#                       (v3.2), frame-deliberation (v3.1), and the split
+#                       evidence-gate + citation-gate (v3.2); observability empty
+#                       => the instrumentation sub-DAG germinates nothing).
+#                       `models` and `profile` are posture params and do NOT
+#                       alter the node set.
+# ArtifactFlow (v3.2)  : every artifact a node REQUIRES has an upstream node that
+#                       PRODUCES it (along blocked-by order). This is the property
+#                       that makes the old split-gate bug (a citation audit that
+#                       required a paper produced DOWNSTREAM) a seal VIOLATION.
+# Re-check directly (any Java 11+; the jar ships in the cosmon repo at
+# docs/specs/tla2tools.jar — point TLA2TOOLS_JAR at it):
+#   export TLA2TOOLS_JAR=/path/to/cosmon/docs/specs/tla2tools.jar
+#   java -XX:+UseParallelGC -cp "$TLA2TOOLS_JAR" tlc2.TLC \
+#        -workers auto -config spore.cfg spore.tla
+# The module models the DAG's gate semantics and TLC discharges all five. On the
+# released `cs`, germinate with --allow-unchecked-seal (see SEAL HONESTY above);
+# a development-branch `cs` verifies inline and prints "seal: verified <hash>".
+# --------------------------------------------------------------------------
+[spore.seal]
+module     = "spore.tla"
+config     = "spore.cfg"
+properties = ["Termination", "GateFailClosed", "NoResourceCollision", "DeterministicParametrization", "ArtifactFlow"]
+
+# --------------------------------------------------------------------------
+# ParamSchema. Two params are REQUIRED (subject, problem_statement); the rest
+# carry defaults so the spore expands cleanly for the single-target case.
+# NOTE (static node kinds): node kind is fixed at parse time, so a node
+# cannot switch fixed<->fanout on a param value. The single-target case is
+# therefore a 1-element `subquestions` fan-out (the default ["main"]); the
+# multi-subquestion case passes an N-element list. See README.
+# --------------------------------------------------------------------------
+[spore.params.subject]
+type        = "string"
+required    = true
+description = "Short name of the conjecture / problem under attack."
+
+[spore.params.problem_statement]
+type        = "string"
+required    = true
+description = "The verbatim conjecture, phrased 'to be PROVEN or REFUTED, not assumed'."
+
+[spore.params.origin]
+type        = "string"
+default     = ""
+description = "Provenance / context of the conjecture (paper, poser, motivation)."
+
+[spore.params.subquestions]
+type        = "list<string>"
+default     = ["main"]
+description = "Attack targets. One entry (default) => single-target; many => fan-out decomposition. NEVER empty (a fan-out needs a non-empty param list)."
+
+[spore.params.formal_backend]
+type        = "enum"
+values      = ["lean", "none"]
+default     = "none"
+description = "lean => a real Lean kernel leg gates the seal; none => Lean branch skipped, seal degrades honestly to skeptic + editor legs."
+
+[spore.params.adversarial_corpus_min]
+type        = "int"
+default     = 10
+description = "Minimum number of false statements the red-team corpus must author (the kernel MUST reject them)."
+
+[spore.params.literature_anchors]
+type        = "list<string>"
+# A textual default, not []: an earlier revision found an empty list interpolated
+# "Seed anchors: ." into the source-ledger prompt. The sentinel below renders a
+# habitable "Seed anchors: none — build the ledger from scratch." instead.
+default     = ["none — build the ledger from scratch"]
+description = "Seed citations/anchors for the source ledger (citekeys, DOIs, or titles). Defaults to a textual 'build from scratch' sentinel."
+
+# --------------------------------------------------------------------------
+# observability — the on/off switch for the OPTIONAL instrumentation sub-fleet
+# (collector -> dataviz -> narrator). The spore format has NO enum-gated fixed
+# node: a fixed node always germinates, and the only supported way to make a
+# node's germination conditional is a fan-out over a param list that is EMPTY
+# when off (an empty list yields zero calls, since fan-out expansion happens at
+# germination). So observability is a
+# `list<string>` acting as an on/off gate:
+#   * OFF (default, []):        nothing germinates for instrumentation.
+#   * ON  (--var observability=on): the sentinel one-element list ["on"]
+#     germinates the collector -> dataviz -> narrator chain exactly once each.
+# Pass EXACTLY `on` to enable; a multi-element value would multiply each stage
+# and is unsupported. (A first-class boolean-gated node is a missing spore
+# primitive — surfaced back to the cosmon project in the v3 acceptance write-up, not patched here.)
+# --------------------------------------------------------------------------
+[spore.params.observability]
+type        = "list<string>"
+default     = []
+description = "Instrumentation gate. Empty (default) => off, nothing germinates. Pass `--var observability=on` to germinate the read-only collector -> dataviz -> narrator reporting chain over the drained DAG."
+
+# --------------------------------------------------------------------------
+# models — the recipient's model-access POSTURE (v3.1, addition 1). The per-node
+# model allocation travels as `model = ...` pins on the formula STEPS (fable-5 on
+# deep-reasoning legs, opus-4-8 on build/writing legs, sonnet-5 on the mechanical
+# legs — see README "Model access"). Those pins are baked into the shipped formula
+# files; a spore PARAM cannot rewrite a formula file at germination, so this param
+# does NOT mechanically strip the pins. It records posture, and the README maps
+# each value to a concrete command:
+#   * full   (default): the recipient has all three models; the pins apply as-is.
+#   * single: the recipient has ONE model; they set a GLOBAL override
+#     (`ANTHROPIC_MODEL=<their-model>` or `cs tackle --model <m>`), which cosmon
+#     ranks ABOVE every step pin, collapsing all tiers to their one model. The DAG
+#     and germination are unchanged — only the realized model differs.
+# (A first-class param-driven model rewrite — or a `model` field on [[spore.node]]
+# — is a missing spore primitive; surfaced back to the cosmon project in the v3.1
+# acceptance write-up, not patched here. The pins are inert until a molecule is TACKLED, so an unavailable
+# model never breaks `cs spore validate` / germination — only the tackle, which the
+# override resolves.)
+# --------------------------------------------------------------------------
+[spore.params.models]
+type        = "enum"
+values      = ["full", "single"]
+default     = "full"
+description = "Model-access posture. full (default) => recipient has fable-5/opus-4-8/sonnet-5, step pins apply as-is. single => recipient has one model and sets a global ANTHROPIC_MODEL / cs tackle --model override (ranks above every pin). Advisory: the value does not rewrite pins; see README 'Model access'."
+
+[spore.params.delivery]
+type        = "enum"
+values      = ["private", "staged", "public"]
+default     = "private"
+description = "Delivery posture for the resulting paper. Default private."
+
+# --------------------------------------------------------------------------
+# profile — the recipient's LANE posture (v3.2). THIS manifest (spore.toml)
+# is the FULL lane (15 fixed nodes + fan-outs, three model tiers, the Lean
+# branch, the 16-role fleet). The RECOMMENDED first run is the STARTER lane, a
+# separate manifest (spore-starter.toml): 4 nodes
+# (decompose -> proof-attempt -> skeptic -> trace), ONE model (claude-opus-4-8),
+# concurrency 1, no Lean / JVM / Zotero. Start there, inspect the trace, then
+# promote to this full lane.
+#
+# Because a spore param CANNOT restructure the fixed-node DAG (node kind
+# is fixed at parse time), the two lanes are two manifests, not one switch — this
+# `profile` param records the posture and the README maps each value to the
+# manifest to run. It does NOT itself change the node set (same class of missing
+# primitive as `models` / `observability`; surfaced back to the cosmon project, not faked here).
+# Default `starter` = "we recommend you start on the starter lane."
+# --------------------------------------------------------------------------
+[spore.params.profile]
+type        = "enum"
+values      = ["starter", "full"]
+default     = "starter"
+description = "Lane posture. starter (default, recommended first run) => run spore-starter.toml (4 nodes, one model, no Lean). full => run THIS manifest (spore.toml). Advisory: a param cannot restructure the fixed-node DAG, so the lanes are separate manifests; see README §1."
+
+# --------------------------------------------------------------------------
+# Fleet — concurrency-capped worktree isolation so parallel proof attempts and
+# the ||-branches never collide on the same files (NoResourceCollision).
+#
+# CREW (v3): `path` points at the fleet.toml shipped in this template — an
+# research-grade fleet: a COGNITION sub-fleet (9 named roles) driving the informal
+# branch + paper, the FORMAL trio (kernel-engineer / probe-engineer /
+# red-team-mathematician) driving the parallel Lean branch, an OPTIONAL
+# INSTRUMENTATION sub-fleet (collector / dataviz / narrator, gated by the
+# `observability` param), and the hypha observation layer. A recipient installs
+# it as their fleet (`cs fleet ...`) instead of leaning on generic default
+# workers, and the file ships in the drop alongside the spore. NOTE (v3.2
+# acceptance): `cs spore export`'s bundle hash covers this spore.toml + its formulas
+# + the seal, but NOT fleet.toml — verify the crew by content, not by bundle id
+# (surfaced back to the cosmon project). Each DAG node names its crew role via a `crew_role`
+# var (see the header note). `name` matches the fleet.toml's `fleet =`.
+# --------------------------------------------------------------------------
+[spore.fleet]
+name            = "math-attack"
+path            = "fleet.toml"
+concurrency_cap = 6
+isolation       = "worktree"
+
+# --------------------------------------------------------------------------
+# Per-node recipes — formula aliases. Paths are relative to this manifest
+# (portability invariant). task-work drives the agentic legs; citation-audit
+# (lifted) is the seal's citation leg; mycelium (lifted) is the chronicle fold.
+# --------------------------------------------------------------------------
+[spore.formulas.task-work]
+path          = "formulas/task-work.formula.toml"
+description   = "Generic agentic base (no model pin). Reference base the three model-tier variants below derive from; not bound by any node."
+deterministic = false
+
+# --- Model-tier variants of task-work (v3.1, addition 1) ------------------
+# A spore node has no `model` field and the spore->nucleate path drops
+# `--model`, so a per-node model allocation can only travel on the FORMULA
+# STEP, and cosmon honors a per-step model pin. One formula = one set of step pins, and
+# task-work is shared across many nodes, so the allocation is carried by binding
+# each node to the tier variant matching its cognitive load. See README
+# "Model access" for the full table + the override / degradation story.
+[spore.formulas.task-work-reasoning]
+path          = "formulas/task-work-reasoning.formula.toml"
+description   = "task-work pinned to claude-fable-5 (deep-reasoning tier): proof attempts, skeptic, red-team, decompose."
+deterministic = false
+
+[spore.formulas.task-work-build]
+path          = "formulas/task-work-build.formula.toml"
+description   = "task-work pinned to claude-opus-4-8 (build/writing tier): notebooks, lean legs, ledger, cards, synthesize."
+deterministic = false
+
+[spore.formulas.task-work-mechanical]
+path          = "formulas/task-work-mechanical.formula.toml"
+description   = "task-work pinned to claude-sonnet-5 (mechanical/observer tier): the instrumentation chain."
+deterministic = false
+
+[spore.formulas.deep-think-inline]
+path          = "formulas/deep-think-inline.formula.toml"
+description   = "Tier-0 multi-persona deliberation (claude-fable-5) — the frame-deliberation stress-test (lifted)."
+deterministic = false
+
+[spore.formulas.citation-audit]
+path          = "formulas/citation-audit.formula.toml"
+description   = "Citation seal leg — L0/L1/L2/L3 locator-match audit of the paper (claude-sonnet-5)."
+deterministic = false
+
+[spore.formulas.editorial-work]
+path          = "formulas/editorial-work.formula.toml"
+description   = "Prose-authoring formula (claude-opus-4-8) — write-paper binds here instead of task-work (lifted)."
+deterministic = false
+
+[spore.formulas.temp-review]
+path          = "formulas/temp-review.formula.toml"
+description   = "Review-as-formula (claude-fable-5) — editorial-verdict's fail-closed, author!=scorer editorial review (see README)."
+deterministic = false
+
+[spore.formulas.mycelium]
+path          = "formulas/mycelium.formula.toml"
+description   = "Chronicle fold over the drained attack DAG (claude-sonnet-5)."
+deterministic = false
+
+# ==========================================================================
+# The DAG (declaration order; two parallel branches then converge — v2, v3.2 split).
+#   trace (root+leaf, always-on sidecar — no edges)
+#   decompose -> frame-deliberation -> source-ledger -> concept-cards
+#     informal:  concept-cards -> [proof-attempt || notebooks] -> skeptic
+#                                              (fan-out over subquestions)
+#     formal:    concept-cards -> lean-skeleton -> [lean-probe || red-team-corpus]
+#     converge:  {skeptic, lean-probe, red-team-corpus} -> evidence-gate
+#                -> synthesize -> write-paper -> citation-gate
+#                -> editorial-verdict -> chronicle
+# The lean-skeleton (fidelity anchor) forks from concept-cards IN PARALLEL with
+# the informal branch — the early Lean statement prevents drift while the
+# informal proof is written (see the fleet.toml formal-crew header).
+# ==========================================================================
+
+# --- 1. decompose ---------------------------------------------------------
+[[spore.node]]
+id          = "decompose"
+kind        = "fixed"
+formula     = "task-work-reasoning"    # fable-5: deep decomposition
+description = "Restate the conjecture formally, build the proof-obligation tree, enumerate strategies + falsifiability tests."
+[spore.node.vars]
+crew_role = "concept-writer"
+topic = """
+MATH-ATTACK on ${params.subject}. Conjecture to be PROVEN or REFUTED, not \
+assumed: ${params.problem_statement}. Origin/context: ${params.origin}. \
+DECOMPOSE the attack surface into decompose.md: (a) the formal restatement; \
+(b) the proof-obligation tree — the sub-claims, lemmas and reductions any full \
+proof or refutation must pass through; (c) candidate strategies (direct, \
+contrapositive, contradiction, construction, counterexample search); (d) the \
+falsifiability tests whose failure would REFUTE the conjecture. Formal backend \
+requested: ${params.formal_backend}."""
+
+# --- 1a. trace (v3.2 — always-on append-only sidecar) ----------------------
+# A ROOT node (no blocked-by => runnable the instant germination finishes, before
+# any scientific node is tackled) that is ALSO a leaf (nothing depends on it), so
+# a stall anywhere downstream never strands it. It is NOT gated by `observability`
+# and NOT downstream of `chronicle` (that was the trap the premortem named: the consolation trace
+# scheduled behind the whole scientific DAG, lost the moment the DAG stalled).
+# It captures the append-only sidecar: raw events, per-node briefs, artifact
+# hashes. The optional CHARTS over that data still live behind `observability`
+# (collector -> dataviz -> narrator); only the raw capture is unconditional.
+# HONEST BOUNDARY: a single node run snapshots once; true continuous capture is a
+# cosmon-core sidecar (out of scope this molecule, README §"What is NOT enforced").
+[[spore.node]]
+id          = "trace"
+kind        = "fixed"
+formula     = "task-work-mechanical"   # sonnet-5: read-only capture
+description = "Always-on append-only trace sidecar (raw events + per-node briefs + artifact hashes). Root+leaf: germinates unconditionally, survives a downstream stall, never gated by observability."
+[spore.node.vars]
+crew_role = "collector"
+topic = """
+MATH-ATTACK ${params.subject} — TRACE SIDECAR (always-on). Open an append-only \
+trace under trace/ the instant this polymer germinates, INDEPENDENT of whether \
+the scientific DAG completes. Capture, as they happen: the raw cosmon events \
+(nucleation / tackle / evolve / complete / collapse) for THIS polymer, each \
+node's germinated brief (topic + formula + crew_role), and a content hash + byte \
+count for every artifact any node writes. READ-ONLY on .cosmon/state/ — these \
+are cosmon runtime state files, written by the cs runtime; their schema is \
+defined by cosmon itself, the columns used here are the ones described inline, \
+and the leg must degrade gracefully if a file or field is absent. Copy \
+into trace/, never mutate. Emit trace/events.jsonl, trace/briefs.md and \
+trace/hashes.tsv. This is the consolation artifact: even if the attack stalls or \
+a worker dies, trace/ must let a third party reconstruct what ran, on what model, \
+producing what bytes. Charts are OPTIONAL (the observability chain); this raw \
+capture is NOT."""
+
+# --- 1b. frame-deliberation (v3.1, addition 2) ----------------------------
+# A multi-persona panel (wheeler/feynman/godel dispositions) that stress-tests
+# the decomposition and the falsifiability tests BEFORE compute is spent
+# downstream. Fanout-neutral (a fixed node — exactly one deliberation), Tier-0
+# leaf formula (deep-think-inline never nucleates). Sits between decompose and
+# source-ledger so its recommendation shapes the ledger and everything after.
+[[spore.node]]
+id          = "frame-deliberation"
+kind        = "fixed"
+formula     = "deep-think-inline"      # fable-5: the deliberation panel
+description = "Multi-persona panel stress-testing the decomposition + falsifiability tests before downstream compute. Recommends adjustments; never nucleates."
+[spore.node.vars]
+crew_role = "skeptic"
+panel = "auto"
+topic = """
+MATH-ATTACK ${params.subject} — FRAME DELIBERATION. Commission a panel to \
+stress-test decompose.md (the decomposition and the falsifiability tests) for \
+${params.problem_statement} BEFORE any downstream compute is spent. Convene 3-5 \
+personas with the dispositions of question-framing (à la Wheeler), \
+first-principles (à la Feynman) and formal-limits (à la Gödel) — pass \
+--var panel to name them explicitly, or leave panel=auto to pick the closest \
+AVAILABLE Claude Code subagents (portable default; no persona file ships in \
+this zip). Each persona attacks: is the proof-obligation tree complete and \
+non-circular? Do the falsifiability tests actually have teeth (would their \
+failure REFUTE the conjecture)? What is the decomposition quietly assuming? \
+Emit a recommendation (outcomes.md) naming the weakest branches and what must \
+change — recommend only, do NOT nucleate; the DAG downstream honors it."""
+
+# --- 2. source-ledger -----------------------------------------------------
+[[spore.node]]
+id          = "source-ledger"
+kind        = "fixed"
+formula     = "task-work-build"
+description = "Build the authoritative bibliography ledger; every anchor gets citekey + locator + exact statement."
+[spore.node.vars]
+crew_role = "sourcer"
+topic = """
+MATH-ATTACK ${params.subject} — SOURCE LEDGER. Build source-ledger.md: the \
+authoritative bibliography for the attack on ${params.problem_statement}. Seed \
+anchors: ${params.literature_anchors}. For every source, capture citekey, a \
+precise locator (theorem / proposition / page) and the exact statement it \
+supplies. This ledger is the citation substrate the citation-gate will \
+verify — every claim in the final paper must trace to a row here."""
+
+# --- 3. concept-cards -----------------------------------------------------
+[[spore.node]]
+id          = "concept-cards"
+kind        = "fixed"
+formula     = "task-work-build"
+description = "One card per load-bearing definition / lemma / technique, each pinned to a source-ledger row."
+[spore.node.vars]
+crew_role = "concept-writer"
+topic = """
+MATH-ATTACK ${params.subject} — CONCEPT CARDS. From decompose.md and \
+source-ledger.md, write one concept-card per load-bearing definition, lemma or \
+technique needed for ${params.problem_statement}. Each card: precise statement, \
+its role in the proof-obligation tree, its dependencies, and the source-ledger \
+row it rests on. Emit concept-cards/."""
+
+# --- 4a. proof-attempt (fan-out over subquestions) ------------------------
+[[spore.node]]
+id          = "proof-attempt"
+kind        = "fanout"
+for_each    = "${params.subquestions}"
+formula     = "task-work-reasoning"    # fable-5: the proof attempt
+description = "Attack one target: prove or refute in full rigor. Never asserts the conjecture — 'proved' is the kernel's word, downstream."
+[spore.node.vars]
+crew_role = "proofsmith"
+topic = """
+MATH-ATTACK ${params.subject} — PROOF ATTEMPT on target '${item}' (target \
+#${index}). Conjecture under attack: ${params.problem_statement}. Using the \
+concept-cards and source-ledger, attempt to PROVE or REFUTE this target. Emit \
+proof-attempt-${index}.md: the argument in full rigor, every step justified or \
+flagged as a gap; if refuted, the explicit counterexample; if stuck, the \
+precise obstruction. Do NOT assert the conjecture true — a target reaches \
+'proved' only through the kernel/Lean leg downstream. Backend: ${params.formal_backend}."""
+
+# --- 4b. notebooks (fan-out over subquestions, parallel to proof-attempt) -
+[[spore.node]]
+id          = "notebooks"
+kind        = "fanout"
+for_each    = "${params.subquestions}"
+formula     = "task-work-build"        # opus-4-8: building notebooks
+description = "Computational stress-test of one target: numeric/symbolic experiments, small-case checks, counterexample search."
+[spore.node.vars]
+crew_role = "coder"
+topic = """
+MATH-ATTACK ${params.subject} — COMPUTATIONAL NOTEBOOKS for target '${item}' \
+(target #${index}). Conjecture: ${params.problem_statement}. Build executable \
+notebooks (numeric / symbolic experiments, small-case verification, \
+counterexample search) that stress target '${item}'. Emit notebook-${index} + \
+a findings note: what the computation supports, what it refutes, at what scale. \
+Computation corroborates or refutes; it NEVER constitutes the proof."""
+
+# --- 5. skeptic (converge: proof-attempt || notebooks) --------------------
+[[spore.node]]
+id          = "skeptic"
+kind        = "fixed"
+formula     = "task-work-reasoning"    # fable-5: adversarial review
+description = "Adversarial review of all attempts + notebooks. faults.md with BLOCKER/MAJOR/MINOR; a non-empty BLOCKER set blocks the seal."
+[spore.node.vars]
+crew_role = "skeptic"
+topic = """
+MATH-ATTACK ${params.subject} — SKEPTIC / red-team the proof attempts and \
+notebooks for ${params.problem_statement}. You are the adversary. Read every \
+proof-attempt-*.md and every notebook finding. Hunt for: unjustified steps, \
+hidden assumptions, circular reasoning, mis-cited lemmas, and scale-limited \
+computations passed off as general. Write faults.md: one numbered finding per \
+fault, each tagged BLOCKER / MAJOR / MINOR. A non-empty BLOCKER set BLOCKS the \
+seal downstream — do not soften. If genuinely clean, say so with the checks you ran."""
+
+# --- 6. lean-skeleton (fidelity anchor; forks from concept-cards) ---------
+# PARALLEL FORMAL BRANCH (v2): this node depends on concept-cards, NOT skeptic,
+# so the Lean statement is pinned in parallel with the informal proof attempts.
+[[spore.node]]
+id          = "lean-skeleton"
+kind        = "fixed"
+formula     = "task-work-build"        # opus-4-8: careful transcription
+description = "Transcribe the target theorem(s) as 'theorem … := by sorry', forking from concept-cards in parallel with the informal branch. The statement is the fidelity anchor; pinning it early prevents drift while the informal proof is written; a wrong statement voids every downstream proof."
+[spore.node.vars]
+crew_role = "kernel-engineer"
+topic = """
+MATH-ATTACK ${params.subject} — LEAN SKELETON (fidelity anchor). Backend: \
+${params.formal_backend}. If 'lean': transcribe the target theorem(s) for \
+${params.problem_statement} into Lean 4 as `theorem … := by sorry`. The Lean \
+statement MUST be a faithful transcription of the conjecture — this is the \
+fidelity anchor, and a wrong statement makes every downstream proof \
+meaningless. If 'none': write the skeleton as a precise natural-language \
+statement block and mark the Lean branch SKIPPED honestly; the seal will \
+degrade to the skeptic + editor legs only. Emit lean/ or skeleton.md."""
+
+# --- 7a. lean-probe -------------------------------------------------------
+[[spore.node]]
+id          = "lean-probe"
+kind        = "fixed"
+formula     = "task-work-build"        # opus-4-8: discharge the sorries
+description = "Discharge the sorries with real proof terms and run `lake build`. PROVED (exit 0, no sorry/axiom) or UNPROVABLE_IN_BUDGET — never 'false'."
+[spore.node.vars]
+crew_role = "probe-engineer"
+topic = """
+MATH-ATTACK ${params.subject} — LEAN PROBE. Backend: ${params.formal_backend}. \
+If 'lean': attempt to discharge the `sorry`s from the lean-skeleton with real \
+proof terms; run `lake build`. Report each theorem as PROVED (lake build exit \
+0, grep-clean of sorry/axiom) or UNPROVABLE_IN_BUDGET — never conflate \
+'couldn't find a proof' with 'false'. If 'none': record the Lean leg as \
+SKIPPED (no backend). Emit lean-probe-report.md with the build exit code and \
+the per-theorem verdict. The LLM emits proof terms only; `lake build` is the \
+sole verdict (LLM firewall)."""
+
+# --- 7b. red-team-corpus (parallel to lean-probe) -------------------------
+[[spore.node]]
+id          = "red-team-corpus"
+kind        = "fixed"
+formula     = "task-work-reasoning"    # fable-5: adversarial corpus
+description = "Author >= adversarial_corpus_min FALSE statements the kernel MUST reject — near-misses, dropped hypotheses, typing cheats."
+[spore.node.vars]
+crew_role = "red-team-mathematician"
+topic = """
+MATH-ATTACK ${params.subject} — RED-TEAM CORPUS. Author at least \
+${params.adversarial_corpus_min} FALSE statements adjacent to \
+${params.problem_statement} that the kernel / `lake build` MUST reject: \
+near-miss variants, wrong quantifier order, dropped hypotheses, universe / \
+typing cheats. Each entry: statement, expected_verdict=false, category, \
+provenance. The corpus proves the checker rejects what it should. Emit corpus/ \
++ coverage-report.md. If backend='none', author them as natural-language \
+false-statement challenges for the skeptic to confirm are rejected."""
+
+# --- 8. evidence-gate (converge: skeptic + lean-probe + red-team-corpus) ---
+# v3.2 (SPLIT GATE): the PRE-synthesis evidence gate. It gates on the KERNEL and
+# SKEPTIC legs over artifacts that ALREADY EXIST upstream (faults.md, the
+# lean-probe report, the red-team corpus) — it does NOT run a citation audit,
+# because the paper does not exist yet (write-paper is downstream). The citation
+# leg moved to `citation-gate`, AFTER write-paper. This split repairs the old
+# gate-flow deadlock (a citation audit over a paper produced downstream). Formula is
+# task-work-mechanical (no paper artifact to audit here).
+[[spore.node]]
+id          = "evidence-gate"
+kind        = "fixed"
+formula     = "task-work-mechanical"
+description = "PRE-synthesis fail-closed gate over EXISTING evidence: kernel lake-build exit 0 + grep-clean; zero residual skeptic BLOCKERs; red-team corpus present. No citation audit (paper not written yet — that is citation-gate)."
+[spore.node.vars]
+crew_role = "editor"
+topic = """
+MATH-ATTACK ${params.subject} — EVIDENCE GATE (pre-synthesis) for \
+${params.problem_statement}. Gate on the evidence that ALREADY EXISTS, \
+FAIL-CLOSED — do NOT audit citations here (no paper exists yet). (1) KERNEL leg — \
+lean-probe reports `lake build` exit 0 with grep-clean of sorry/axiom (or, if \
+formal_backend='none', record the leg as DEGRADED, not passed); (2) SKEPTIC leg — \
+faults.md exists and has zero residual BLOCKERs; (3) CORPUS leg — the red-team \
+corpus is present and its coverage report is non-empty. Emit evidence-verdict.md: \
+PASS only if all applicable legs pass (DEGRADED if the kernel leg is honestly \
+degraded and the rest pass), else BLOCKED with the failing leg named. Absent \
+evidence => BLOCKED, never PASS. The paper's citation audit happens LATER, at \
+citation-gate, once write-paper has produced the paper."""
+
+# --- 9. synthesize --------------------------------------------------------
+[[spore.node]]
+id          = "synthesize"
+kind        = "fixed"
+formula     = "task-work-build"        # opus-4-8: fold the legs
+description = "Fold every leg into synthesis.md: proved / refuted / open, at what confidence, evidence-gate status stated honestly."
+[spore.node.vars]
+crew_role = "synthesizer"
+topic = """
+MATH-ATTACK ${params.subject} — SYNTHESIZE. Fold decompose, proof-attempts, \
+notebooks, skeptic faults, the Lean results and the evidence-verdict into \
+synthesis.md for ${params.problem_statement}: what was proved, what was \
+refuted, what remains open, at what confidence, with the evidence-gate status \
+stated honestly (PASS / BLOCKED / DEGRADED). The citation audit is NOT yet run \
+(it gates the paper at citation-gate, downstream) — do not claim citation \
+clearance here."""
+
+# --- 10. write-paper ------------------------------------------------------
+[[spore.node]]
+id          = "write-paper"
+kind        = "fixed"
+formula     = "editorial-work"         # opus-4-8: editorial parity (addition 4)
+description = "Write the paper from the synthesis; every citation traces to a source-ledger row. External attribution: Noogram."
+[spore.node.vars]
+crew_role = "writer"
+topic = """
+MATH-ATTACK ${params.subject} — WRITE PAPER on ${params.problem_statement}. \
+From synthesis.md, write the paper (LaTeX or markdown): statement, method, \
+proof / refutation, computational evidence, honest limitations. Every citation \
+must trace to a source-ledger row. Delivery posture: ${params.delivery}. \
+External attribution: Noogram. Claim 'proved' ONLY for targets the kernel leg \
+established."""
+
+# --- 10b. citation-gate (v3.2, SPLIT GATE — POST-write citation audit) -----
+# The second half of the split seal: the citation audit runs HERE, over the paper
+# write-paper has now produced (against source-ledger.md), fail-closed. This is
+# the node that could not exist before the paper — the exact dependency the old
+# seal-gate got backwards. Uses the LIFTED citation-audit formula (its natural
+# home). Emits the verification-report the editorial-verdict then reads.
+[[spore.node]]
+id          = "citation-gate"
+kind        = "fixed"
+formula     = "citation-audit"
+description = "POST-write citation audit (L0/L1/L2/L3 locator-match) over the paper against source-ledger.md, fail-closed. The paper now exists (write-paper is upstream). Zero unresolved L3 / fabricated citations to pass."
+[spore.node.vars]
+crew_role = "editor"
+topic = """
+MATH-ATTACK ${params.subject} — CITATION GATE (post-write) for the paper on \
+${params.problem_statement}. Run the citation audit (L0/L1/L2/L3 locator-match \
+protocol) over the WRITTEN paper (write-paper produced it upstream) against \
+source-ledger.md and emit verification-report.md. FAIL-CLOSED: PASS only if the \
+audit shows zero unresolved L3 / fabricated citations and every paper citation \
+traces to a source-ledger row; else BLOCKED with the offending citations named. \
+Absent paper or absent ledger => BLOCKED, never PASS."""
+
+# --- 11. editorial-verdict (verifies paper + both gates, fail-closed) ------
+[[spore.node]]
+id          = "editorial-verdict"
+kind        = "fixed"
+formula     = "temp-review"            # fable-5: review-as-formula (addition 3)
+description = "Independent fail-closed verdict: paper claims match the evidence-gate, citations cleared by citation-gate, skeptic findings addressed. SHIP or REWRITE."
+[spore.node.vars]
+crew_role = "reviewer"
+topic = """
+MATH-ATTACK ${params.subject} — EDITORIAL VERDICT (fail-closed) on the paper \
+for ${params.problem_statement}. Independently verify: the paper claims no more \
+than the evidence-gate established (no 'proved' beyond the kernel leg); the \
+citation-gate's verification-report shows every citation resolves; the skeptic's \
+accepted findings are addressed; limitations are stated. Verdict SHIP or REWRITE \
+with reasons. FAIL-CLOSED: absent evidence-verdict OR absent verification-report \
+=> REWRITE, never SHIP. Delivery posture ${params.delivery} is the operator's \
+call, not this gate's."""
+
+# --- 12. chronicle (mycelium fold) ----------------------------------------
+[[spore.node]]
+id          = "chronicle"
+kind        = "fixed"
+formula     = "mycelium"
+description = "Fold the drained attack DAG into CHRONICLES.md — 0-3 entries, only if a principle was illuminated (Feynman register)."
+[spore.node.vars]
+crew_role = "hypha"
+topic = """
+MATH-ATTACK ${params.subject} — CHRONICLE. Fold the drained attack DAG for \
+${params.problem_statement} into docs/lore/CHRONICLES.md: 0-3 entries, only if \
+a principle was illuminated, in Feynman register (a smart 8-year-old must grasp \
+the image). Density is the value; an 80% rejection rate is healthy."""
+
+# ==========================================================================
+# INSTRUMENTATION sub-DAG (OPTIONAL — gated by the `observability` param).
+# Each node is a fan-out over ${params.observability}: OFF (default []) => zero
+# germinations; ON (["on"]) => exactly one of each, chained collector -> dataviz
+# -> narrator, rooted at the drained DAG (blocked-by chronicle). This is the only
+# format-supported conditional-germination mechanism (an empty fan-out list emits
+# no calls). Read-only on cosmon state; never touches the seal legs.
+# ==========================================================================
+
+# --- 13. collector (fan-out gate; observes the drained polymer) -----------
+[[spore.node]]
+id          = "collector"
+kind        = "fanout"
+for_each    = "${params.observability}"
+formula     = "task-work-mechanical"   # sonnet-5: read-only snapshot
+description = "Snapshot this polymer's cosmon instrumentation (events/runtime-trace/frontier) into tidy tables. Read-only; copies, never mutates state."
+[spore.node.vars]
+crew_role = "collector"
+topic = """
+MATH-ATTACK ${params.subject} — INSTRUMENTATION / COLLECTOR. Observability is ON. \
+Snapshot the cosmon instrumentation for THIS germinated math-attack polymer and \
+normalise it into tidy tables under report/data/ (events, transitions, \
+frontier_timeseries, costs, workers) + a schema.md. READ-ONLY on \
+.cosmon/state/ — copy snapshots into report/data/ and work from the copy, never \
+mutate state. Emit a small report/collect.py that regenerates the CSVs. Measured, \
+not decorated: every field traces to a real row of events.jsonl / \
+runtime-trace.jsonl / frontier.json."""
+
+# --- 14. dataviz (fan-out gate; renders the life-cycle) -------------------
+[[spore.node]]
+id          = "dataviz"
+kind        = "fanout"
+for_each    = "${params.observability}"
+formula     = "task-work-mechanical"   # sonnet-5: render the life-cycle
+description = "Render the fleet life-cycle (polymerisation -> foaming -> drainage) from the collector's tables into report/figures/."
+[spore.node.vars]
+crew_role = "dataviz"
+topic = """
+MATH-ATTACK ${params.subject} — INSTRUMENTATION / DATAVIZ. From report/data/*.csv \
+render the fleet life-cycle into report/figures/ (PDF + PNG): DAG growth over \
+time, a molecule Gantt coloured by sub-fleet (cognition / formal / \
+instrumentation), frontier width (the foaming signal), cumulative cost, \
+per-role agent activity, the critical path, and the outcome mix \
+(completed vs collapsed). Each figure stands alone (title, axes, caption); a \
+report/render.py regenerates all figures from the CSVs. Honest caveats: if a \
+metric under-counts, say so on the chart."""
+
+# --- 15. narrator (fan-out gate; weaves the report) -----------------------
+[[spore.node]]
+id          = "narrator"
+kind        = "fanout"
+for_each    = "${params.observability}"
+formula     = "task-work-mechanical"   # sonnet-5: weave the report
+description = "Weave the charts into report/report.md — the story of the dynamic DAG, in Feynman register, closing with an honest scorecard."
+[spore.node.vars]
+crew_role = "narrator"
+topic = """
+MATH-ATTACK ${params.subject} — INSTRUMENTATION / NARRATOR. Weave the figures into \
+report/report.md: how the attack on ${params.problem_statement} polymerised (the \
+initial DAG), foamed (children nucleated mid-run, frontier widening) and drained \
+(walk to completion). Feynman register — each figure introduced by a concrete \
+image, not jargon. Close with the honest scorecard: what the fleet built, what \
+the Lean branch PROVED vs left sorry'd, what it cost. Keep it self-contained and \
+free of any confidential third-party names."""
+
+# ==========================================================================
+# Typed edges (feeds / produces / verifies). All become blocked-by links at
+# expansion; the type is descriptive provenance, not a different control flow.
+# ==========================================================================
+# decompose -> frame-deliberation -> source-ledger (v3.1, addition 2): the
+# panel stress-tests the decomposition before the ledger and everything after.
+[[spore.edge]]
+from = "decompose"
+to   = "frame-deliberation"
+type = "feeds"
+
+[[spore.edge]]
+from = "frame-deliberation"
+to   = "source-ledger"
+type = "feeds"
+
+[[spore.edge]]
+from = "source-ledger"
+to   = "concept-cards"
+type = "feeds"
+
+# A || B : concept-cards feeds both proof-attempt and notebooks
+[[spore.edge]]
+from = "concept-cards"
+to   = "proof-attempt"
+type = "feeds"
+
+[[spore.edge]]
+from = "concept-cards"
+to   = "notebooks"
+type = "feeds"
+
+# informal branch converges on skeptic
+[[spore.edge]]
+from = "proof-attempt"
+to   = "skeptic"
+type = "feeds"
+
+[[spore.edge]]
+from = "notebooks"
+to   = "skeptic"
+type = "feeds"
+
+# PARALLEL FORMAL BRANCH (v2): lean-skeleton forks from concept-cards, in
+# parallel with the informal branch — the early fidelity anchor prevents
+# statement drift while the informal proof is written.
+[[spore.edge]]
+from = "concept-cards"
+to   = "lean-skeleton"
+type = "feeds"
+
+# A || B : lean-skeleton feeds both lean-probe and red-team-corpus
+[[spore.edge]]
+from = "lean-skeleton"
+to   = "lean-probe"
+type = "feeds"
+
+[[spore.edge]]
+from = "lean-skeleton"
+to   = "red-team-corpus"
+type = "feeds"
+
+# Both branches converge on evidence-gate (v3.2 split gate). The skeptic leg (informal)
+# joins the kernel + red-team legs (formal) as the pre-synthesis gate's three
+# fail-closed inputs. NO citation audit here — the paper does not exist yet.
+[[spore.edge]]
+from = "skeptic"
+to   = "evidence-gate"
+type = "verifies"
+
+[[spore.edge]]
+from = "lean-probe"
+to   = "evidence-gate"
+type = "verifies"
+
+[[spore.edge]]
+from = "red-team-corpus"
+to   = "evidence-gate"
+type = "verifies"
+
+[[spore.edge]]
+from = "evidence-gate"
+to   = "synthesize"
+type = "feeds"
+
+[[spore.edge]]
+from = "synthesize"
+to   = "write-paper"
+type = "feeds"
+
+# v3.2 split gate: the citation audit runs AFTER the paper exists. write-paper produces
+# the paper; citation-gate audits it; editorial-verdict reads the report.
+[[spore.edge]]
+from = "write-paper"
+to   = "citation-gate"
+type = "feeds"
+
+[[spore.edge]]
+from = "citation-gate"
+to   = "editorial-verdict"
+type = "verifies"
+
+[[spore.edge]]
+from = "editorial-verdict"
+to   = "chronicle"
+type = "feeds"
+
+# INSTRUMENTATION sub-DAG (present only when observability is ON; when OFF the
+# fan-out nodes germinate nothing and these edges bind no molecules). The chain
+# is rooted at chronicle so it observes the fully drained attack DAG.
+[[spore.edge]]
+from = "chronicle"
+to   = "collector"
+type = "feeds"
+
+[[spore.edge]]
+from = "collector"
+to   = "dataviz"
+type = "feeds"
+
+[[spore.edge]]
+from = "dataviz"
+to   = "narrator"
+type = "feeds"

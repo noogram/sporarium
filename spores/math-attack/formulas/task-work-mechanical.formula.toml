@@ -1,0 +1,45 @@
+formula = "task-work-mechanical"
+version = 1
+description = """
+Execute a concrete task on a MECHANICAL / OBSERVER model pin.
+
+Identical in shape to `task-work` (implement -> verify), but every step
+pins `model = "claude-sonnet-5"`. Bind the nodes whose value is faithful
+transcription over invention — the read-only instrumentation chain
+(collector / dataviz / narrator) — to this formula. (The chronicle fold
+and the citation-audit resolution pass carry the same sonnet pin on their
+own dedicated formulas.) The pin travels on the formula step (the only
+in-zip per-node model channel; see `task-work-reasoning`).
+
+GRACEFUL DEGRADATION: the pin is inert until tackle; override with
+`cs tackle <id> --model <m>` or `ANTHROPIC_MODEL=<m>`. See README
+"Model access".
+"""
+id_prefix = "task"
+
+[vars.topic]
+description = "The concrete task to execute, stated in one or more sentences."
+required = true
+
+[tier]
+level = 0
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+description = "Do the work. Read the project's CLAUDE.md for conventions."
+acceptance = "Implementation complete, the leg's artifact emitted"
+model = "claude-sonnet-5"
+
+[[steps]]
+id = "verify"
+title = "Verify and validate"
+description = """
+Verify the artifact against its brief: every field traces to a real
+source row (for instrumentation, a real row of events.jsonl /
+runtime-trace.jsonl / frontier.json), no invented numbers, honest
+caveats where a metric under-counts. Fix any issues.
+"""
+needs = ["implement"]
+acceptance = "Artifact verified against its brief; every field traces to a real source row"
+model = "claude-sonnet-5"
