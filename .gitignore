@@ -14,3 +14,7 @@ spores/**/states/
 # Local + privately-archived; never in the public tree.
 drops/
 runs/
+
+# Cosmon surface projections (derived views of internal state — local only).
+STATUS.md
+ISSUES.md

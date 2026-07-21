@@ -29,7 +29,7 @@ location = [".cosmon/**/*"]
 audience = "solo"
 
 [bench]
-location = ["bench/**/*", "drops/**/*", "runs/**/*"]
+location = ["bench/**/*", "drops/**/*", "runs/**/*", "STATUS.md", "ISSUES.md"]
 audience = "solo"
 
 # ── catch-all: every remaining path classifies here — must stay LAST ─
