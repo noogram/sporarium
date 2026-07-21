@@ -18,3 +18,6 @@ runs/
 # Cosmon surface projections (derived views of internal state — local only).
 STATUS.md
 ISSUES.md
+
+# Internal deliberation tooling — local only, not part of the shipped scaffold.
+.cosmon/formulas/deep-think.formula.toml

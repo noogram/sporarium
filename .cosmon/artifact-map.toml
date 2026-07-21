@@ -7,6 +7,10 @@
 # repository (not publicly accessible) at milestones, never pushed here.
 
 # ── public: the shipped surface ──────────────────────────────────────
+[design-notes]
+location = ["docs/design/**/*"]
+audience = "public"
+
 [spores]
 location = ["spores/**/*"]
 audience = "public"
