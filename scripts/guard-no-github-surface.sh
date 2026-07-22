@@ -143,8 +143,10 @@ remote_is_public() {
 # --- scan for a LIVE github-issues surface ---------------------------------
 has_live_github_surface() {
   [ -f "$SURFACES_TOML" ] || return 1
+  # Quote-agnostic: TOML permits "double" or 'literal' strings; a hand-edit
+  # could use either, so match both rather than only cosmon's double-quoted form.
   strip_comments "$SURFACES_TOML" \
-    | grep -Eq '^[[:space:]]*kind[[:space:]]*=[[:space:]]*"github-issues"[[:space:]]*$'
+    | grep -Eq "^[[:space:]]*kind[[:space:]]*=[[:space:]]*[\"']github-issues[\"'][[:space:]]*\$"
 }
 
 # --- scan for auto_reconcile = true (config.toml OR surfaces.toml) ----------
