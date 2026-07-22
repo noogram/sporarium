@@ -15,6 +15,18 @@ audience = "public"
 location = ["spores/**/*"]
 audience = "public"
 
+# The R1' structural guard (delib-20260721-f0b1: "sever the capability, don't
+# gate the act") is honest engineering — public is correct. It documents WHY in
+# its own header and carries the standing falsifier. The CI workflow and the
+# local pre-push hook are its two enforcement arms.
+[repo-guard]
+location = [
+  "scripts/guard-no-github-surface.sh",
+  ".github/workflows/guard-no-github-surface.yml",
+  ".githooks/pre-push",
+]
+audience = "public"
+
 [top-docs]
 location = ["README.md", "CLAUDE.md", "PROTOCOL.md", ".gitignore", "LICENSE-MIT", "LICENSE-APACHE"]
 audience = "public"
