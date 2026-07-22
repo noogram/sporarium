@@ -3,6 +3,11 @@
 .cosmon/state/
 .cosmon/molecules/
 .cosmon/registry.sqlite
+# surfaces.toml is LOCAL-ONLY and gitignored on purpose: `cs init` auto-writes a
+# live kind="github-issues" surface from the public remote (corroborated in
+# runs/2026-07-22-r1prime-corroboration.md), and it must never be committed.
+# scripts/guard-no-github-surface.sh fails the build if a live one appears.
+# R1' verdict: delib-20260721-f0b1 — "sever the capability, don't gate the act."
 .cosmon/surfaces.toml
 .gitleaks.toml
 

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Local pre-push arm of the R1' structural guard (belt-and-suspenders with CI).
+# Enable once per clone:  git config core.hooksPath .githooks
+#
+# WHY: delib-20260721-f0b1 — "sever the capability, don't gate the act."
+# Refuses the push if a live github-issues surface or auto_reconcile=true is
+# present against a public remote. See scripts/guard-no-github-surface.sh header.
+set -euo pipefail
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+exec bash "$REPO_ROOT/scripts/guard-no-github-surface.sh"
