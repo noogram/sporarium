@@ -15,7 +15,7 @@ audience = "public"
 location = ["spores/**/*"]
 audience = "public"
 
-# The R1' structural guard (delib-20260721-f0b1: "sever the capability, don't
+# The R1' structural guard (maintainer deliberation 2026-07-21: "sever the capability, don't
 # gate the act") is honest engineering — public is correct. It documents WHY in
 # its own header and carries the standing falsifier. The CI workflow and the
 # local pre-push hook are its two enforcement arms.

@@ -1,6 +1,6 @@
 # R1' structural guard — fails the build if the GitHub-issues wire is reconnected.
 #
-# WHY: delib-20260721-f0b1 verdict "sever the capability, don't gate the act."
+# WHY: maintainer-deliberation (2026-07-21) verdict "sever the capability, don't gate the act."
 # sporarium must never auto-publish internal molecule IDs to its public GitHub
 # tracker. A tombstone comment is an intention; this CI job is the lock.
 # Full rationale in the header of scripts/guard-no-github-surface.sh.

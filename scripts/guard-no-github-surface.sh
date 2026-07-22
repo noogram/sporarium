@@ -5,7 +5,7 @@
 #
 # WHY THIS FILE EXISTS
 # --------------------
-# Deliberation delib-20260721-f0b1 asked: should sporarium couple its cosmon
+# A maintainer governance deliberation (2026-07-21) asked: should sporarium couple its cosmon
 # molecule backlog to the public GitHub issue tracker (noogram/sporarium) via
 # the cosmon surface sync (kind = "github-issues")?
 #
@@ -74,7 +74,7 @@
 # after a P4 audit of the exact body. Reintroducing a github-issues surface is
 # a deliberate human act that must first make this guard pass again.
 #
-# Full rationale: delib-20260721-f0b1 synthesis (local, solo audience).
+# Full rationale: the maintainers' internal deliberation record (2026-07-21, not published).
 # ============================================================================
 
 set -euo pipefail
@@ -93,7 +93,7 @@ fail() {
   echo "" >&2
   echo "    $1" >&2
   echo "" >&2
-  echo "    Governance rule (delib-20260721-f0b1): 'sever the capability, don't gate the act.'" >&2
+  echo "    Governance rule (maintainer deliberation, 2026-07-21): 'sever the capability, don't gate the act.'" >&2
   echo "    sporarium must NEVER auto-publish internal molecule IDs to its public" >&2
   echo "    GitHub tracker. The maintainer creates public issues BY HAND after a P4 audit." >&2
   echo "    Remove the live github-issues surface / auto_reconcile=true, or make the" >&2
