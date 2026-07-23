@@ -740,7 +740,14 @@ MATH-ATTACK ${params.subject} — SYNTHESIZE. Fold decompose, proof-attempts, \
 notebooks, skeptic faults, the Lean results and the evidence-verdict into \
 synthesis.md for ${params.problem_statement}: what was proved, what was \
 refuted, what remains open, at what confidence, with the evidence-gate status \
-stated honestly (PASS / BLOCKED / DEGRADED). The citation audit is NOT yet run \
+stated honestly (PASS / BLOCKED / DEGRADED). ROUNDS (v4): the VERDICT rests on \
+the FINAL round only — read reattack-verdict.json to learn which round that is, \
+and fold THAT round's proof-attempts, faults and lean-probe report, not round \
+1's. The PROSE must still reference the trajectory: how many rounds ran, what \
+each one fixed, and whether the still-unproved list SHRANK (real progress) or \
+merely churned (say so plainly — it is the honest signal that more rounds will \
+not help). Every round's artifacts are on disk under attack-round-K/. At \
+rounds=1 there is one round and it is round 1. The citation audit is NOT yet run \
 (it gates the paper at citation-gate, downstream) — do not claim citation \
 clearance here."""
 

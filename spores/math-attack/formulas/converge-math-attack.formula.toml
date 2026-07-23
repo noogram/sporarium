@@ -38,9 +38,9 @@ rounds K >= 2. Pinned once, never re-opened by this loop:
 THE ROUND (K >= 2; 3+ nodes, nucleated FORWARD each iteration):
       faults-{K-1} (prior skeptic) + unproved-{K-1} (prior lean-probe)
       |
-      +--> proof-attempt-K x |subquestions|  (reasoning tier)  --+
-      |    (brief folds the bounded source refresh)              |
-      +--> lean-probe-K     (build tier, fed unproved-{K-1})     |
+      +--> proof-attempt-K x |subquestions|  (reasoning tier)  --+   these two run
+      |    (brief folds the bounded source refresh)              |   IN PARALLEL,
+      +--> lean-probe-K     (build tier, fed unproved-{K-1})   --+   as in round 1
                                                                  v
                                                           skeptic-K (reasoning)
                                                                  |
@@ -248,9 +248,13 @@ Pseudocode (round 1 already read by `init-ledger`):
                   assert truth; prove or refute."
 
         # (b) formal: one lean-probe, fed ONLY its own unproved list (cross-feed
-        #     informal->formal is OFF by design — fork discipline)
+        #     informal->formal is OFF by design — fork discipline). It is NOT
+        #     blocked-by this round's attempts: blocking it there would be exactly
+        #     the informal->formal channel the fork discipline forbids, and would
+        #     serialize two legs that are meant to run in PARALLEL (the same
+        #     parallel-branch topology round 1 uses).
         probe_id = cs nucleate task-work-build --kind task \\
-            --blocked-by <all attempt_id> --decayed-from {this_mol_id} \\
+            --decayed-from {this_mol_id} \\
             --tag temp:warm --tag reattack-round:K \\
             --var topic="MATH-ATTACK ${subject} — LEAN PROBE round K. Backend:
               ${formal_backend}. Attempt to discharge the theorems still listed

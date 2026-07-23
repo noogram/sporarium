@@ -279,9 +279,12 @@ Requires(n) ==
       \* folded verdict, which is what tells the gate WHICH round is live.
       [] n.role = "evidence_gate"      -> { "reattack_verdict", "faults_md",
                                             "lean_probe_report", "corpus" }
-      [] n.role = "synthesize"         -> { "evidence_verdict", "proof_attempt",
-                                            "notebooks", "faults_md",
-                                            "lean_probe_report" }
+      \* v4: synthesize also reads the loop's verdict — it is what tells the fold
+      \* WHICH round the verdict rests on (the final one), so the prose can
+      \* reference the trajectory without the verdict drifting to a stale round.
+      [] n.role = "synthesize"         -> { "evidence_verdict", "reattack_verdict",
+                                            "proof_attempt", "notebooks",
+                                            "faults_md", "lean_probe_report" }
       [] n.role = "write_paper"        -> { "synthesis" }
       \* the citation gate REQUIRES "paper" — and write_paper (its upstream
       \* dependency) PRODUCES it. In the OLD design the audit required "paper"
@@ -625,9 +628,22 @@ AbsentCitationNeverPromotes ==
     (citation_leg = "absent") => citation_verdict \in {"NONE", "BLOCKED"}
 
 \* (c-bis, v4) An UNFOLDED re-attack loop can never yield a promoting evidence
-\* verdict. This is the loop's half of GateFailClosed: it has teeth precisely
-\* against a mis-wired DAG in which evidence_gate could read the kernel/skeptic
-\* legs while the loop was still iterating them.
+\* verdict.
+\*
+\* HONEST STATUS — this clause is REDUNDANT under the shipped wiring, and it is
+\* recorded here as such rather than sold as load-bearing. Because evidence_gate
+\* is blocked-by re_attack, the loop is always Done (hence folded) before the gate
+\* runs, so reattack_v = "NONE" is unreachable at the gate. Measured, not assumed:
+\* deleting the matching `rv = "NONE" -> BLOCKED` branch from EvidenceDecision
+\* leaves TLC green (negative test NEG-1). And the mis-wiring it was meant to
+\* catch — an evidence_gate re-pointed at skeptic/lean_probe so it bypasses the
+\* loop — IS rejected by the seal, but by ArtifactFlow (the gate would require
+\* "reattack_verdict" with no upstream producer), not by this clause (NEG-5).
+\*
+\* It is kept as a written statement of the gate's intent: if a future revision
+\* ever lets the gate become runnable while the loop is still iterating, this is
+\* the clause that says what must then hold. Do not cite it as the thing that
+\* makes the loop fail-closed — that is ArtifactFlow plus the blocked-by edge.
 UnfoldedLoopNeverPromotes ==
     (reattack_v = "NONE") => evidence_verdict \in {"NONE", "BLOCKED"}
 
