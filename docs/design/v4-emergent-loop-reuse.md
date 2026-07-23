@@ -201,16 +201,21 @@ formula  = "converge-math-attack"     # NEW formula; composes `while`
 
 [spore.node.bounds]
 output_type    = "attack-round"
-max_instances  = "${params.rounds}"   # the rounds ceiling — the foaming variant the seal bounds
+max_instances  = 5    # the structural ceiling — the foaming variant the seal bounds
 stop_condition = "kernel PROVED (lake build green, no sorry) AND skeptic clean in the same round, OR rounds reached => blocked + human escalation (never a silent pass)"
+
+[spore.node.vars]
+rounds = "${params.rounds}"   # the runtime target fed to `while` (cosmon-dev's `max_rounds`)
 ```
 
-`rounds` **is** `[bounds].max_instances`. There is no new ParamSchema constraint
-field and no unsealed-overflow hazard, because **the bound *is* the seal's
-Termination variant** — a `rounds` value cannot germinate a graph the seal did
-not model, since the seal is modeled over `0..MaxRounds` for the cap `MaxRounds`
-the `.cfg` fixes (§4). (`cs spore validate` should still fail-close on
-`rounds > MaxRounds` for defence in depth — see §5.)
+This is cosmon-dev's mapping verbatim in shape: **`[bounds].max_instances` is a
+literal structural ceiling** (the foaming bound the seal certifies), and the
+**`rounds` param is the runtime target** the `while` loop counts to, fed through
+`[spore.node.vars]` — exactly as cosmon-dev feeds `max_rounds = "${params.max_rounds}"`
+while pinning `max_instances = 5`. The two are distinct on purpose: the ceiling is
+the sealed invariant; `rounds` is how far *this* run tries before giving up (it may
+stop earlier on the `stop_condition`). Because `rounds` must never exceed the sealed
+ceiling, `cs spore validate` fail-closes on `rounds > max_instances` (§5).
 
 ### 3.4 DAG sketch (rounds = 2, single subquestion, observability off)
 
@@ -229,7 +234,7 @@ flowchart TD
     nb1 --> sk1
     skel --> lp1["lean-probe (round 1)"]
 
-    sk1 --> react["re-attack (emergent, bounds max=rounds)"]
+    sk1 --> react["re-attack (emergent, bounded loop; rounds = runtime target)"]
     lp1 --> react
     react -.->|"reads faults/unproved of prior round; re-nucleates attempt+skeptic+probe forward; STOP on proved and clean"| react
 
@@ -296,15 +301,18 @@ whole formula is gone.)
 CONSTANTS
     Subquestions  = {"sq1", "sq2"}
     Observability = {"obs1"}
-    MaxRounds     = 5            \* NEW — the modeled cap; smaller `rounds` hold a fortiori
+    MaxRounds     = 3            \* NEW — the SMALLEST bound that exercises the loop; larger holds a fortiori
     NULL          = NoSq
 ```
 
 `MaxRounds` sits beside `Subquestions`/`Observability` as a **posture** for the
-model (it bounds the loop counter), **not** as a node-set multiplier. Model at
-the cap; smaller `rounds` remove trailing loop rounds and hold *a fortiori* — the
-same argument the current `.cfg` already uses for `observability` off, and the
-same one cosmon-dev's `.cfg` uses for `MaxRounds`.
+model (it bounds the loop counter), **not** as a node-set multiplier. Following
+cosmon-dev's `.cfg` exactly, `MaxRounds` is set to the **smallest bound that
+exercises the convergence loop** — the loop is entered, exhaustion→`blocked` is
+reachable, and the clean-fixpoint is reachable — and larger bounds (up to the
+`max_instances = 5` structural ceiling and beyond) hold **a fortiori**. This is
+the same argument the current `.cfg` uses for `observability` off, and it is why
+the modeled `MaxRounds` need not equal the spore's `max_instances` literal.
 
 ### 4.4 State-space (to be measured at implementation)
 
@@ -319,14 +327,14 @@ molecule does not run TLC).
 
 ## 5. Fail-closed overflow (defence in depth)
 
-Because `rounds` **is** `[bounds].max_instances` and the seal is modeled over
-`0..MaxRounds`, a `rounds` above the modeled cap would let the loop foam past the
-sealed bound. `cs spore validate` must **fail-close on `rounds > MaxRounds`** — a
-hard refusal, never a README-only cap (the repo's own invariant: *"Simulate the
-bare-handed recipient first… refusals are fail-closed"*; *"Verdict before
-shipping"*). No new ParamSchema `max` field is added (that is core feature-creep,
-the wrong place to grow surface); the check lives at validate, against the `.cfg`
-`MaxRounds`.
+The `rounds` runtime target must never exceed the sealed structural ceiling
+`[bounds].max_instances` (§3.3); a larger `rounds` would drive the loop to foam
+past the bound the seal certifies. `cs spore validate` must **fail-close on
+`rounds > max_instances`** — a hard refusal, never a README-only cap (the repo's
+own invariant: *"Simulate the bare-handed recipient first… refusals are
+fail-closed"*; *"Verdict before shipping"*). No new ParamSchema `max` field is
+added (that is core feature-creep, the wrong place to grow surface); the check
+lives at validate, against the spore's `max_instances` literal.
 
 ---
 
@@ -336,9 +344,11 @@ the wrong place to grow surface); the check lives at validate, against the `.cfg
   `skeptic`, `lean-skeleton`, `lean-probe`, `red-team-corpus`, and the whole
   frame/substrate and convergence tail are the **exact v3.2 nodes with exact v3.2
   filenames** — v4 adds a node, it does not rewrite the existing ones.
-- **At `rounds=1` the `re-attack` node foams zero children** (`max_instances=1`
-  ⇒ the loop's bound is the round-1 attempt itself; no forward round is
-  nucleated). `evidence-gate` folds round 1's `skeptic`/`lean-probe` directly.
+- **At `rounds=1` the `re-attack` node foams zero children** (the runtime target
+  is met by the round-1 attempt itself; the `while` loop nucleates no forward
+  round). `evidence-gate` folds round 1's `skeptic`/`lean-probe` directly. (The
+  structural ceiling `max_instances=5` is unchanged; `rounds` is the per-run
+  target beneath it — §3.3.)
 - **Filenames:** round-1 artifacts keep their exact v3 names (they *are* the v3
   nodes); only rounds ≥ 2 carry the `RoundPath(i)` = `attack-round-i` suffix, and
   those exist only when `rounds ≥ 2`.
@@ -384,7 +394,7 @@ draft — you do **not** always pay for all `rounds`: the loop early-exits on
 (cap-exhausted, no early-exit) as the budget ceiling, and note early-exit only
 *reduces* it.
 
-### 8.1 Context-accumulation cap (open — see §9.5)
+### 8.1 Context-accumulation cap (open — see §9 item 5)
 
 Later rounds accumulate context (all prior faults). A hard conjecture's faults
 could balloon; the convergence formula should carry a per-round summarizer or a
@@ -417,9 +427,10 @@ Deliberately **not** built, to keep v4 minimal:
    cosmetic faults" soft-stop. **Default (strict) recommended; confirm.**
 5. **Context-accumulation cap (§8.1).** Feed *last* round's faults + *cumulative*
    unproved, with a per-round summarizer? **Confirm policy.**
-6. **`rounds` cap value.** Default 5 (matching cosmon-dev's `max_instances = 5`).
-   Higher caps multiply worst-case cost and TLC state; the human-review burden on
-   `R` full rounds of proofs is the real ceiling. **Confirm 5** (or lower).
+6. **Structural ceiling (`[bounds].max_instances`).** Default 5 (matching
+   cosmon-dev). This is the sealed foaming bound; the `rounds` runtime target must
+   be ≤ it (§5). Higher ceilings multiply worst-case cost; the human-review burden
+   on that many full rounds of proofs is the real limit. **Confirm 5** (or lower).
 
 Note what is **no longer** an open question: `active_when` (deleted — reuse
 `emergent`), the ParamSchema `min`/`max` field (deleted — the bound is
