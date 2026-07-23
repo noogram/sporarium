@@ -8,15 +8,37 @@
 #   germinates. A deliberation panel stress-tests the decomposition first; then
 #   two branches fork from the concept cards and run IN PARALLEL, converging at
 #   the EVIDENCE gate (the parallel-branch topology — v2, + v3.1 frame-deliberation,
-#   + v3.2 split gate):
+#   + v3.2 split gate, + v4 re-attack loop):
 #     open:      decompose -> frame-deliberation (panel) -> source-ledger -> concept cards
 #     informal:  concept cards -> proof attempts || notebooks -> skeptic
 #     formal:    concept cards -> Lean skeleton -> Lean probe || red-team corpus
-#     converge:  { skeptic, Lean probe, red-team corpus } -> evidence-gate
+#     loop:      { skeptic, Lean probe } -> re-attack (bounded emergent loop)
+#     converge:  { re-attack, red-team corpus } -> evidence-gate
 #                -> synthesis -> paper -> citation-gate -> editorial verdict -> chronicle.
 #   The Lean skeleton is the fidelity anchor; forking it early (not after the
 #   skeptic) pins the theorem statement WHILE the informal proof is written, so
 #   statement drift cannot creep in during the skeptic loop.
+#
+# v4 RE-ATTACK LOOP (the one addition over v3.2):
+#   * `rounds` (int, default 1) + ONE new node `re-attack` (kind = "emergent",
+#     bounded by [spore.node.bounds]) + ONE new formula (converge-math-attack,
+#     which COMPOSES the shipped `while` loop). ZERO new format primitives: this
+#     is the same emergent+[bounds] pair the cosmon-dev spore's `converge` node
+#     already ships and already seals.
+#   * On a conjecture that defeated a frontier system, one pass will very likely
+#     not close it. The loop re-attacks forward — each round K>=2 fed round K-1's
+#     faults + still-unproved theorems + ONLY the source anchors the prior skeptic
+#     flagged missing — and STOPS EARLY the moment the kernel proves it and the
+#     skeptic is clean. At the cap it BLOCKS and escalates, never a silent pass.
+#   * `rounds = 1` (the default) is EXACTLY v3.2: the loop nucleates nothing, the
+#     round-1 nodes are the untouched v3.2 nodes with their v3.2 filenames, and
+#     the evidence-gate folds round 1 directly. Only rounds >= 2 write under
+#     `attack-round-K/`.
+#   * `rounds >= 2` requires a DRIVER-CAPABLE `cs` (with `wait` and
+#     `run --resident`); the formula's preflight step refuses fast otherwise.
+#   * BUDGET SUPER-LINEARLY: later rounds re-read accumulated history, so a round
+#     is NOT a fixed unit of spend. See the README cost table (worst case =
+#     cap-exhausted; early exit only reduces it).
 #
 # v3.2 HARDENING WAVE (from a premortem review of v3 — "imagine this shipped and
 # failed; list why". The numbered findings below are summarized inline; the full
@@ -118,8 +140,8 @@ branch is honestly skipped and the seal degrades to the skeptic + editor legs.
 #                       subquestion index, so parallel writers never alias files.
 # DeterministicParametrization : the same params yield the same expansion — the
 #                       node set is a pure function of `subquestions` and
-#                       `observability` (|Nodes| = 15 + 2*|subquestions|
-#                       + 3*|observability|; the 15 fixed nodes include trace
+#                       `observability` (|Nodes| = 16 + 2*|subquestions|
+#                       + 3*|observability|; the 16 fixed nodes include trace
 #                       (v3.2), frame-deliberation (v3.1), and the split
 #                       evidence-gate + citation-gate (v3.2); observability empty
 #                       => the instrumentation sub-DAG germinates nothing).
@@ -170,6 +192,32 @@ description = "Provenance / context of the conjecture (paper, poser, motivation)
 type        = "list<string>"
 default     = ["main"]
 description = "Attack targets. One entry (default) => single-target; many => fan-out decomposition. NEVER empty (a fan-out needs a non-empty param list)."
+
+# --------------------------------------------------------------------------
+# rounds (v4) — bounded feedback cycles on the informal+formal re-attack.
+#
+# On a conjecture that defeated a frontier system, one pass will very likely not
+# close it. v3.x modelled a SINGLE shot and re-cycling was a MANUAL
+# re-germination. `rounds` turns that human loop into data: the `re-attack` node
+# (kind = "emergent", bounded by [spore.node.bounds]) re-attacks the conjecture
+# forward, each round K>=2 fed round K-1's faults + still-unproved list + a
+# bounded source refresh, and STOPS EARLY the moment the kernel proves it and the
+# skeptic is clean.
+#
+# TWO DISTINCT NUMBERS, ON PURPOSE:
+#   * [spore.node.bounds].max_instances = 5 — the STRUCTURAL CEILING. It is the
+#     foaming bound the seal certifies; it never varies per run.
+#   * `rounds` — the RUNTIME TARGET this run counts to beneath that ceiling. It
+#     may stop earlier on the stop_condition.
+# `rounds` must never exceed the ceiling (a larger value would drive the loop to
+# foam past the bound the seal certifies), so `cs spore validate` fail-closes on
+# `rounds > max_instances`. No ParamSchema `max` field is added — the bound lives
+# at the node's [bounds] block, which is the thing the seal actually reads.
+# --------------------------------------------------------------------------
+[spore.params.rounds]
+type        = "int"
+default     = 1
+description = "Bounded feedback cycles on the informal+formal re-attack. 1 (default) => single shot, identical to v3.x (the re-attack node nucleates nothing). K => the conjecture is re-attacked up to K times, each round K>=2 fed round K-1's faults + still-unproved list + a bounded source refresh, stopping EARLY the moment the kernel proves it and the skeptic is clean; at the cap it BLOCKS and escalates, never a silent pass. Hard ceiling 5 = the sealed [spore.node.bounds].max_instances; `cs spore validate` refuses a larger value. Budget SUPER-LINEARLY: later rounds re-read accumulated history, so a round is not a fixed unit of spend (see README cost table). Requires a DRIVER-CAPABLE `cs` (with `wait` + `run --resident`) for rounds >= 2."
 
 [spore.params.formal_backend]
 type        = "enum"
@@ -243,7 +291,7 @@ description = "Delivery posture for the resulting paper. Default private."
 
 # --------------------------------------------------------------------------
 # profile — the recipient's LANE posture (v3.2). THIS manifest (spore.toml)
-# is the FULL lane (15 fixed nodes + fan-outs, three model tiers, the Lean
+# is the FULL lane (16 fixed nodes + fan-outs, three model tiers, the Lean
 # branch, the 16-role fleet). The RECOMMENDED first run is the STARTER lane, a
 # separate manifest (spore-starter.toml): 4 nodes
 # (decompose -> proof-attempt -> skeptic -> trace), ONE model (claude-opus-4-8),
@@ -275,9 +323,12 @@ description = "Lane posture. starter (default, recommended first run) => run spo
 # `observability` param), and the hypha observation layer. A recipient installs
 # it as their fleet (`cs fleet ...`) instead of leaning on generic default
 # workers, and the file ships in the drop alongside the spore. NOTE (v3.2
-# acceptance): `cs spore export`'s bundle hash covers this spore.toml + its formulas
-# + the seal, but NOT fleet.toml — verify the crew by content, not by bundle id
-# (surfaced back to the cosmon project). Each DAG node names its crew role via a `crew_role`
+# acceptance, CORRECTED at v4): the v3.2 note here said `cs spore export`'s bundle
+# hash covered spore.toml + formulas + seal but NOT fleet.toml. That was surfaced
+# back to the cosmon project and has since been FIXED: on `cs 0.2.2`, fleet.toml
+# is listed under `covered` and mutating it changes the bundle hash (verified by
+# mutation on the v4 bench). The crew is now pinned by the bundle id like
+# everything else. Each DAG node names its crew role via a `crew_role`
 # var (see the header note). `name` matches the fleet.toml's `fleet =`.
 # --------------------------------------------------------------------------
 [spore.fleet]
@@ -338,19 +389,31 @@ path          = "formulas/temp-review.formula.toml"
 description   = "Review-as-formula (claude-fable-5) — editorial-verdict's fail-closed, author!=scorer editorial review (see README)."
 deterministic = false
 
+# --- v4: the ONE net-new formula (a formula, not a format primitive) ------
+# The math-attack convergence body — the analogue of the cosmon galaxy's
+# `converge-clean-room.formula.toml`. It COMPOSES the shipped `while` loop (it
+# does not copy it) and is bound by the `re-attack` emergent node below.
+[spore.formulas.converge-math-attack]
+path          = "formulas/converge-math-attack.formula.toml"
+description   = "v4 re-attack convergence loop — drives `while` over rounds K>=2 (proof-attempt x N + lean-probe + skeptic, fed the prior round's faults + unproved list) until kernel PROVED and skeptic clean in the same round, or blocked+escalate at the `rounds` cap."
+deterministic = false
+
 [spore.formulas.mycelium]
 path          = "formulas/mycelium.formula.toml"
 description   = "Chronicle fold over the drained attack DAG (claude-sonnet-5)."
 deterministic = false
 
 # ==========================================================================
-# The DAG (declaration order; two parallel branches then converge — v2, v3.2 split).
+# The DAG (declaration order; two parallel branches then converge — v2, v3.2
+# split, v4 re-attack loop).
 #   trace (root+leaf, always-on sidecar — no edges)
 #   decompose -> frame-deliberation -> source-ledger -> concept-cards
 #     informal:  concept-cards -> [proof-attempt || notebooks] -> skeptic
 #                                              (fan-out over subquestions)
 #     formal:    concept-cards -> lean-skeleton -> [lean-probe || red-team-corpus]
-#     converge:  {skeptic, lean-probe, red-team-corpus} -> evidence-gate
+#     loop:      {skeptic, lean-probe} -> re-attack   (emergent, bounded by
+#                [bounds].max_instances = 5; `rounds` is the runtime target)
+#     converge:  {re-attack, red-team-corpus} -> evidence-gate
 #                -> synthesize -> write-paper -> citation-gate
 #                -> editorial-verdict -> chronicle
 # The lean-skeleton (fidelity anchor) forks from concept-cards IN PARALLEL with
@@ -577,7 +640,59 @@ provenance. The corpus proves the checker rejects what it should. Emit corpus/ \
 + coverage-report.md. If backend='none', author them as natural-language \
 false-statement challenges for the skeptic to confirm are rejected."""
 
-# --- 8. evidence-gate (converge: skeptic + lean-probe + red-team-corpus) ---
+# --- 7c. re-attack (v4 — the bounded feedback loop) -----------------------
+# ZERO NEW FORMAT PRIMITIVES. This is `kind = "emergent"` + a [spore.node.bounds]
+# block — the same shipped pair the cosmon-dev spore's `converge` node already
+# uses (and whose seal already models it as a bounded round counter). A `fanout`
+# could NOT express this: fan-out instances are parallel and mutually
+# independent, and there is no channel for "round K is blocked-by round K-1".
+# Feedback is serial-dependent. `emergent` forward-nucleation is: each round is
+# nucleated at runtime `--blocked-by` the prior round, so acyclicity holds by
+# INITIALISATION (a round only ever depends on an already-existing prior round).
+#
+# WHAT REPEATS: proof-attempt (x subquestions), lean-probe, skeptic.
+# WHAT STAYS PINNED: the frame + substrate (decompose, frame-deliberation,
+# source-ledger, concept-cards), the `lean-skeleton` FIDELITY ANCHOR (re-opening
+# it would let the theorem drift between rounds — the exact failure the early
+# fork exists to prevent), and `red-team-corpus` (a property of the STATEMENT,
+# not of proof progress).
+#
+# AT rounds=1 THIS NODE NUCLEATES NOTHING: the runtime target is met by round 1
+# (the pinned informal+formal branches above), so the graph is exactly v3.2's
+# with one dormant node, and round-1 artifacts keep their exact v3 filenames.
+# Only rounds >= 2 carry the `attack-round-K/` prefix.
+#
+# DRIVER-CAPABILITY: forward nucleation needs a `cs` with `wait` + `run
+# --resident`. The formula's `preflight` step refuses fast (with a
+# re-germinate-with-rounds=1 message) on an executor that lacks them.
+[[spore.node]]
+id          = "re-attack"
+kind        = "emergent"
+for_each    = "${nodes.re-attack.rounds}"
+formula     = "converge-math-attack"
+description = "v4 bounded re-attack loop (BLOCK). Composes `while`: each round K>=2 reads round K-1's faults + still-unproved list, folds a bounded source refresh into the attempt brief, and re-nucleates proof-attempt x N + lean-probe + skeptic FORWARD. Stops EARLY on {kernel PROVED and skeptic clean in the same round}; at the `rounds` cap it BLOCKS + escalates, never a silent pass. Fail-closed: an absent faults / unproved / kernel verdict reads as NOT converged."
+[spore.node.bounds]
+output_type    = "attack-round"
+max_instances  = 5    # the structural ceiling — the foaming variant the seal bounds
+stop_condition = "kernel PROVED (lake build exit 0, grep-clean of sorry/axiom) AND skeptic clean in the SAME round, OR `rounds` reached => `blocked` + human escalation (never a silent pass)"
+[spore.node.vars]
+crew_role = "proofsmith"
+rounds    = "${params.rounds}"   # the RUNTIME TARGET fed to `while` (<= max_instances)
+subject             = "${params.subject}"
+problem_statement   = "${params.problem_statement}"
+subquestions        = "${params.subquestions}"
+formal_backend      = "${params.formal_backend}"
+topic = """
+MATH-ATTACK ${params.subject} — RE-ATTACK (bounded feedback loop) on \
+${params.problem_statement}. Round 1 already ran upstream: read its faults.md \
+and lean-probe-report.md, never re-run them. If the kernel PROVED and the \
+skeptic is clean, stop now — that is the fixpoint. Otherwise re-attack forward \
+up to ${params.rounds} rounds, each round fed the previous round's faults, the \
+still-unproved theorems, and ONLY the source anchors the prior skeptic flagged \
+missing. The lean-skeleton statement is FROZEN for the whole loop. At the cap, \
+emit BLOCKED + a named escalation — never a silent pass."""
+
+# --- 8. evidence-gate (converge: re-attack + red-team-corpus) --------------
 # v3.2 (SPLIT GATE): the PRE-synthesis evidence gate. It gates on the KERNEL and
 # SKEPTIC legs over artifacts that ALREADY EXIST upstream (faults.md, the
 # lean-probe report, the red-team corpus) — it does NOT run a citation audit,
@@ -589,16 +704,23 @@ false-statement challenges for the skeptic to confirm are rejected."""
 id          = "evidence-gate"
 kind        = "fixed"
 formula     = "task-work-mechanical"
-description = "PRE-synthesis fail-closed gate over EXISTING evidence: kernel lake-build exit 0 + grep-clean; zero residual skeptic BLOCKERs; red-team corpus present. No citation audit (paper not written yet — that is citation-gate)."
+description = "PRE-synthesis fail-closed gate over EXISTING evidence, folded over the re-attack loop's FINAL round: kernel lake-build exit 0 + grep-clean; zero residual skeptic BLOCKERs; red-team corpus present. No citation audit (paper not written yet — that is citation-gate)."
 [spore.node.vars]
 crew_role = "editor"
 topic = """
 MATH-ATTACK ${params.subject} — EVIDENCE GATE (pre-synthesis) for \
 ${params.problem_statement}. Gate on the evidence that ALREADY EXISTS, \
-FAIL-CLOSED — do NOT audit citations here (no paper exists yet). (1) KERNEL leg — \
-lean-probe reports `lake build` exit 0 with grep-clean of sorry/axiom (or, if \
-formal_backend='none', record the leg as DEGRADED, not passed); (2) SKEPTIC leg — \
-faults.md exists and has zero residual BLOCKERs; (3) CORPUS leg — the red-team \
+FAIL-CLOSED — do NOT audit citations here (no paper exists yet). \
+(0) LOOP leg (v4) — read the re-attack node's reattack-verdict.json FIRST. It \
+names WHICH round is the live one (final_round.artifacts); the kernel and \
+skeptic legs below are read from THAT round, not from round 1, whenever the loop \
+ran a round. An ABSENT or malformed reattack-verdict.json is BLOCKED, never a \
+pass. At rounds=1 the loop nucleated nothing and the live round IS round 1: read \
+faults.md and lean-probe-report.md directly, exactly as v3.x did. \
+(1) KERNEL leg — the live round's lean-probe reports `lake build` exit 0 with \
+grep-clean of sorry/axiom (or, if formal_backend='none', record the leg as \
+DEGRADED, not passed); (2) SKEPTIC leg — the live round's faults.md exists and \
+has zero residual BLOCKERs; (3) CORPUS leg — the red-team \
 corpus is present and its coverage report is non-empty. Emit evidence-verdict.md: \
 PASS only if all applicable legs pass (DEGRADED if the kernel leg is honestly \
 degraded and the rest pass), else BLOCKED with the failing leg named. Absent \
@@ -618,7 +740,14 @@ MATH-ATTACK ${params.subject} — SYNTHESIZE. Fold decompose, proof-attempts, \
 notebooks, skeptic faults, the Lean results and the evidence-verdict into \
 synthesis.md for ${params.problem_statement}: what was proved, what was \
 refuted, what remains open, at what confidence, with the evidence-gate status \
-stated honestly (PASS / BLOCKED / DEGRADED). The citation audit is NOT yet run \
+stated honestly (PASS / BLOCKED / DEGRADED). ROUNDS (v4): the VERDICT rests on \
+the FINAL round only — read reattack-verdict.json to learn which round that is, \
+and fold THAT round's proof-attempts, faults and lean-probe report, not round \
+1's. The PROSE must still reference the trajectory: how many rounds ran, what \
+each one fixed, and whether the still-unproved list SHRANK (real progress) or \
+merely churned (say so plainly — it is the honest signal that more rounds will \
+not help). Every round's artifacts are on disk under attack-round-K/. At \
+rounds=1 there is one round and it is round 1. The citation audit is NOT yet run \
 (it gates the paper at citation-gate, downstream) — do not claim citation \
 clearance here."""
 
@@ -819,16 +948,27 @@ from = "lean-skeleton"
 to   = "red-team-corpus"
 type = "feeds"
 
-# Both branches converge on evidence-gate (v3.2 split gate). The skeptic leg (informal)
-# joins the kernel + red-team legs (formal) as the pre-synthesis gate's three
-# fail-closed inputs. NO citation audit here — the paper does not exist yet.
+# v4: both branches converge on the RE-ATTACK loop, not directly on the gate.
+# The loop reads round 1's skeptic + lean-probe verdicts, re-attacks forward until
+# {kernel PROVED and skeptic clean} or the `rounds` cap, and hands the gate the
+# FINAL round. At rounds=1 it nucleates nothing and passes round 1 straight
+# through — the exact v3.2 semantics.
 [[spore.edge]]
 from = "skeptic"
-to   = "evidence-gate"
-type = "verifies"
+to   = "re-attack"
+type = "feeds"
 
 [[spore.edge]]
 from = "lean-probe"
+to   = "re-attack"
+type = "feeds"
+
+# The loop's folded verdict is the gate's kernel+skeptic input (v3.2 split gate
+# otherwise unchanged). The red-team corpus joins it directly — it is pinned to
+# the STATEMENT and never re-opened by the loop. NO citation audit here — the
+# paper does not exist yet.
+[[spore.edge]]
+from = "re-attack"
 to   = "evidence-gate"
 type = "verifies"
 

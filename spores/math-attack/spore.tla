@@ -15,20 +15,32 @@
 \*   `--allow-unchecked-seal` (see README §0/§2).
 \*
 \* WHAT IS MODELLED
-\*   * the DAG shape — 15 fixed nodes + a 2-node fan-out (proof-attempt ||
+\*   * the DAG shape — 16 fixed nodes + a 2-node fan-out (proof-attempt ||
 \*     notebooks) over the `subquestions` param + an OPTIONAL 3-node
 \*     instrumentation chain (collector -> dataviz -> narrator) fanned out over
 \*     the `observability` gate param (empty => germinates nothing) — as a finite
 \*     set of nodes with a dependency (blocked-by) relation lifted from spore.toml.
-\*     The 15 fixed nodes include the always-on `trace` root+leaf (v3.2) and
+\*     The 16 fixed nodes include the always-on `trace` root+leaf (v3.2) and
 \*     the SPLIT gates evidence_gate (pre-synthesis) + citation_gate (post-write)
-\*     from the v3.2 gate-split repair;
+\*     from the v3.2 gate-split repair, and the v4 `re_attack` node;
+\*   * the v4 RE-ATTACK LOOP as a BOUNDED round counter (0..MaxRounds) — exactly
+\*     the shape `spores/cosmon-dev/spore.tla` already proves for its `converge`
+\*     node. `re_attack` is ONE control node plus an internal counter; its
+\*     emergent children are ROUNDS, not extra nodes, which is what keeps
+\*     DeterministicParametrization intact (`rounds` shapes the loop's bound and
+\*     topics, never the node set). Each round re-runs the kernel and skeptic
+\*     legs, whose verdicts MAY differ round to round; the loop folds to
+\*     PROVED_CLEAN only when the kernel is PROVED AND the skeptic is clean IN
+\*     THE SAME ROUND, and to EXHAUSTED at MaxRounds. `round = 0` is the
+\*     `rounds = 1` world: the loop nucleates NOTHING and round 1's own legs
+\*     (the pinned v3.x skeptic / lean_probe) are what the gate folds;
 \*   * node drainage — a Pending node executes once every dependency is Done;
 \*   * the SPLIT gate legs — evidence_gate's kernel + skeptic legs (pre-synthesis)
 \*     and citation_gate's citation leg (post-write), plus the editorial verdict
 \*     over both, each reading evidence that MAY be absent;
 \*   * artifact writes — each node writes one path; fan-out paths carry the
-\*     subquestion index (the load-bearing detail NoResourceCollision guards);
+\*     subquestion index and re-attack rounds carry the round index (the
+\*     load-bearing details NoResourceCollision guards);
 \*   * artifact FLOW — a Produces/Requires map per node (v3.2), so ArtifactFlow
 \*     can assert every required artifact has an upstream producer.
 \*
@@ -42,21 +54,30 @@
 \*
 \* THE FIVE PROPERTIES (the seal's `properties = [...]`)
 \*   Termination                 — every germinated polymer drains: every node
-\*                                 eventually reaches Done. The DAG is acyclic and
-\*                                 the fan-out is bounded by a param list, so no
-\*                                 unbounded foaming and no cycle.
+\*                                 eventually reaches Done. The DAG is acyclic,
+\*                                 the fan-out is bounded by a param list, and the
+\*                                 re-attack loop is bounded by MaxRounds, so no
+\*                                 unbounded foaming and no cycle. The cap is not
+\*                                 what forbids a dynamic loop from being sealed —
+\*                                 it is the exact device that MAKES one sealable
+\*                                 (it turns an unbounded foam into a finite model).
 \*   GateFailClosed  (LOAD-BEARING) — the absence of a kernel/skeptic verdict
-\*                                 REFUSES the evidence gate, and an absent
-\*                                 citation verdict REFUSES the citation gate;
-\*                                 SHIP requires BOTH promoting. No leg silently
-\*                                 degrades to "pass".
-\*   NoResourceCollision         — no two nodes write the same artifact path (the
-\*                                 fan-out index makes proof-attempt-1 disjoint
-\*                                 from proof-attempt-2).
+\*                                 REFUSES the evidence gate, an unfolded re-attack
+\*                                 loop REFUSES it too, and an absent citation
+\*                                 verdict REFUSES the citation gate; SHIP requires
+\*                                 BOTH promoting. No leg silently degrades to
+\*                                 "pass".
+\*   NoResourceCollision         — no two nodes (nor two re-attack rounds) write
+\*                                 the same artifact path (the fan-out index makes
+\*                                 proof-attempt-1 disjoint from proof-attempt-2;
+\*                                 the round index makes round-1 disjoint from
+\*                                 round-2).
 \*   DeterministicParametrization — the same params yield the same expansion: the
 \*                                 node set is a pure function of `subquestions`
 \*                                 and `observability`, with cardinality
-\*                                 15 + 2*|subquestions| + 3*|observability|.
+\*                                 16 + 2*|subquestions| + 3*|observability|.
+\*                                 `rounds` is a POSTURE param: it bounds the loop
+\*                                 counter and never multiplies the node set.
 \*   ArtifactFlow (v3.2)          — every artifact a node REQUIRES has an upstream
 \*                                 node that PRODUCES it. The gate-split bug (citation
 \*                                 audit requiring a paper produced downstream)
@@ -73,6 +94,8 @@ CONSTANTS
     Subquestions,   \* the `subquestions` fan-out param: a finite, NON-EMPTY set
     Observability,  \* the `observability` gate param: a finite set that MAY be
                     \* EMPTY (off => the instrumentation sub-DAG germinates nothing)
+    MaxRounds,      \* the `rounds` cap (v4): a positive integer bound on the
+                    \* re-attack loop counter. It is NOT a node-set multiplier.
     NULL            \* model value for "no subquestion" on a fixed node
 
 \* A fan-out over an empty param list is a typo, not an intention:
@@ -86,6 +109,10 @@ ASSUME Subquestions # {}
 \* (so a fixed node's sq never collides with a fan-out instance's sq).
 ASSUME NULL \notin Subquestions
 ASSUME NULL \notin Observability
+\* The re-attack cap. `rounds = 1` (the default, no re-attack round nucleated) is
+\* modelled as the reachable state `round = 0`, so MaxRounds >= 1 covers the
+\* default world too — it does not force a round to run.
+ASSUME MaxRounds \in Nat /\ MaxRounds >= 1
 
 \* The `formal_backend` param is modelled NON-DETERMINISTICALLY (a state var
 \* chosen at Init from {"lean","none"}) so ONE model covers both worlds: the
@@ -101,8 +128,8 @@ ASSUME NULL \notin Observability
 FixedRoles ==
     { "trace", "decompose", "frame_deliberation", "source_ledger",
       "concept_cards", "skeptic", "lean_skeleton", "lean_probe",
-      "red_team_corpus", "evidence_gate", "synthesize", "write_paper",
-      "citation_gate", "editorial_verdict", "chronicle" }
+      "red_team_corpus", "re_attack", "evidence_gate", "synthesize",
+      "write_paper", "citation_gate", "editorial_verdict", "chronicle" }
 
 \* Two fan-out DIMENSIONS. The informal branch fans out over `subquestions`; the
 \* OPTIONAL instrumentation sub-DAG fans out over `observability` (empty => none).
@@ -156,10 +183,17 @@ Deps(n) ==
       [] n.role = "lean_skeleton"     -> { Fix("concept_cards") }
       [] n.role = "lean_probe"        -> { Fix("lean_skeleton") }
       [] n.role = "red_team_corpus"   -> { Fix("lean_skeleton") }
+      \* v4: the two branches converge on the RE-ATTACK loop, which reads round
+      \* 1's skeptic + lean_probe verdicts and re-attacks forward. red_team_corpus
+      \* is pinned to the STATEMENT and never re-opened, so it joins the gate
+      \* directly (it does not feed the loop).
+      [] n.role = "re_attack"         -> { Fix("skeptic"), Fix("lean_probe") }
       \* v3.2 split gate: evidence_gate (pre-synthesis, kernel+skeptic legs over
       \* existing artifacts) and citation_gate (post-write, the citation audit
-      \* over the paper that now exists).
-      [] n.role = "evidence_gate"     -> { Fix("skeptic"), Fix("lean_probe"),
+      \* over the paper that now exists). v4: the kernel+skeptic legs now arrive
+      \* through the loop's FINAL round; the transitive closure still reaches
+      \* skeptic / lean_probe, so ArtifactFlow is unchanged.
+      [] n.role = "evidence_gate"     -> { Fix("re_attack"),
                                            Fix("red_team_corpus") }
       [] n.role = "synthesize"        -> { Fix("evidence_gate") }
       [] n.role = "write_paper"       -> { Fix("synthesize") }
@@ -179,6 +213,14 @@ Deps(n) ==
 \* it and NoResourceCollision fails (its teeth).
 ArtifactPath(n) ==
     IF n.sq = NULL THEN n.role ELSE n.role \o "-" \o n.sq
+
+\* v4: the per-round artifact directory the re-attack loop writes. Round i is
+\* disjoint from round j by the index — the load-bearing detail that keeps
+\* NoResourceCollision true across an ITERATED writer (the same discipline the
+\* fan-out suffix provides across PARALLEL writers). The prefix "attack-round-"
+\* also keeps every round path disjoint from every NODE path (no node role begins
+\* with it), so the two write-sets can never alias.
+RoundPath(i) == "attack-round-" \o ToString(i)
 
 \* --------------------------------------------------------------------------
 \* Produces / Requires — the artifact-flow map (v3.2). Each node PRODUCES a
@@ -201,6 +243,11 @@ Produces(n) ==
       [] n.role = "lean_skeleton"      -> { "lean_skeleton" }
       [] n.role = "lean_probe"         -> { "lean_probe_report" }
       [] n.role = "red_team_corpus"    -> { "corpus" }
+      \* v4: the loop's folded verdict names WHICH round is live. It also
+      \* RE-PRODUCES faults_md / lean_probe_report — rounds >= 2 write fresh ones
+      \* under RoundPath(i), and at rounds=1 it simply passes round 1's through.
+      [] n.role = "re_attack"          -> { "reattack_verdict", "faults_md",
+                                            "lean_probe_report" }
       [] n.role = "evidence_gate"      -> { "evidence_verdict" }
       [] n.role = "synthesize"         -> { "synthesis" }
       [] n.role = "write_paper"        -> { "paper" }
@@ -223,12 +270,21 @@ Requires(n) ==
       [] n.role = "lean_skeleton"      -> { "concept_cards" }
       [] n.role = "lean_probe"         -> { "lean_skeleton" }
       [] n.role = "red_team_corpus"    -> { "lean_skeleton" }
+      \* v4: the loop reads round 1's two verdicts (never re-runs them) and the
+      \* frozen fidelity anchor it must NOT re-open.
+      [] n.role = "re_attack"          -> { "faults_md", "lean_probe_report",
+                                            "lean_skeleton" }
       \* the pre-synthesis gate reads ONLY evidence that already exists — NOT the
-      \* paper (that is the whole point of the gate split).
-      [] n.role = "evidence_gate"      -> { "faults_md", "lean_probe_report", "corpus" }
-      [] n.role = "synthesize"         -> { "evidence_verdict", "proof_attempt",
-                                            "notebooks", "faults_md",
-                                            "lean_probe_report" }
+      \* paper (that is the whole point of the gate split). v4 adds the loop's
+      \* folded verdict, which is what tells the gate WHICH round is live.
+      [] n.role = "evidence_gate"      -> { "reattack_verdict", "faults_md",
+                                            "lean_probe_report", "corpus" }
+      \* v4: synthesize also reads the loop's verdict — it is what tells the fold
+      \* WHICH round the verdict rests on (the final one), so the prose can
+      \* reference the trajectory without the verdict drifting to a stale round.
+      [] n.role = "synthesize"         -> { "evidence_verdict", "reattack_verdict",
+                                            "proof_attempt", "notebooks",
+                                            "faults_md", "lean_probe_report" }
       [] n.role = "write_paper"        -> { "synthesis" }
       \* the citation gate REQUIRES "paper" — and write_paper (its upstream
       \* dependency) PRODUCES it. In the OLD design the audit required "paper"
@@ -258,12 +314,17 @@ VARIABLES
     kernel_leg,        \* "absent" | "pass" | "fail" | "degraded"  (Lean kernel verdict)
     citation_leg,      \* "absent" | "pass" | "fail"               (citation audit, at citation_gate)
     skeptic_leg,       \* "absent" | "clean" | "blockers"          (residual BLOCKERs)
+    round,             \* 0..MaxRounds — the v4 re-attack round counter. 0 = the
+                       \* `rounds=1` world (no re-attack round nucleated).
+    reattack_v,        \* "NONE" | "PROVED_CLEAN" | "EXHAUSTED"    (the loop's fold)
+    written_rounds,    \* SUBSET of RoundPath(i) already written (round collision)
     evidence_verdict,  \* "NONE" | "PASS" | "DEGRADED" | "BLOCKED"  (evidence_gate, pre-synthesis)
     citation_verdict,  \* "NONE" | "PASS" | "BLOCKED"               (citation_gate, post-write)
     editorial          \* "NONE" | "SHIP" | "REWRITE"
 
 vars == << backend, status, written, kernel_leg, citation_leg,
-           skeptic_leg, evidence_verdict, citation_verdict, editorial >>
+           skeptic_leg, round, reattack_v, written_rounds,
+           evidence_verdict, citation_verdict, editorial >>
 
 \* A node is runnable when it is still Pending and every dependency is Done.
 Runnable(n) ==
@@ -279,8 +340,22 @@ Runnable(n) ==
 \* kernel leg can at best DEGRADE, and only if the skeptic leg is clean. PASS
 \* requires both present-and-passing.
 \* --------------------------------------------------------------------------
-EvidenceDecision(k, sk) ==
-    IF k = "absent" \/ sk = "absent"
+\* v4: `rv` is the re-attack loop's folded verdict. An UNFOLDED loop (rv = "NONE")
+\* refuses outright — that is the fail-closed guard against a mis-wired DAG where
+\* the gate could read legs the loop had not yet finalized.
+\*
+\* Note what rv does NOT do: it does not itself veto a DEGRADED promotion.
+\* Exhaustion (rv = "EXHAUSTED") with a kernel that is honestly DEGRADED
+\* (backend = "none") and a clean skeptic yields DEGRADED — EXACTLY the v3.x
+\* semantics for a run with no formal backend, which no number of rounds can
+\* improve. Under backend = "lean", exhaustion means the kernel failed/was absent
+\* or the skeptic still held BLOCKERs, and the leg tests below already return
+\* BLOCKED — which IS the "block and escalate at the cap" behaviour. The strict
+\* stop condition lives in the loop; the leg semantics stay byte-identical.
+EvidenceDecision(k, sk, rv) ==
+    IF rv = "NONE"
+        THEN "BLOCKED"                                  \* fail-closed: loop unfolded
+    ELSE IF k = "absent" \/ sk = "absent"
         THEN "BLOCKED"                                  \* fail-closed on absence
     ELSE IF k = "fail" \/ sk = "blockers"
         THEN "BLOCKED"                                  \* fail-closed on a failing leg
@@ -309,6 +384,9 @@ Init ==
     /\ kernel_leg       = "absent"
     /\ citation_leg     = "absent"
     /\ skeptic_leg      = "absent"
+    /\ round            = 0
+    /\ reattack_v       = "NONE"
+    /\ written_rounds   = {}
     /\ evidence_verdict = "NONE"
     /\ citation_verdict = "NONE"
     /\ editorial        = "NONE"
@@ -336,6 +414,7 @@ ExecutePlain(n) ==
     /\ status'  = [status EXCEPT ![n] = "Done"]
     /\ written' = written \cup { ArtifactPath(n) }
     /\ UNCHANGED << backend, kernel_leg, citation_leg, skeptic_leg,
+                    round, reattack_v, written_rounds,
                     evidence_verdict, citation_verdict, editorial >>
 
 \* skeptic — emits a residual-BLOCKER verdict. It MAY come back empty-handed
@@ -348,6 +427,7 @@ ExecuteSkeptic ==
     /\ written' = written \cup { ArtifactPath(n) }
     /\ skeptic_leg' \in {"clean", "blockers", "absent"}
     /\ UNCHANGED << backend, kernel_leg, citation_leg,
+                    round, reattack_v, written_rounds,
                     evidence_verdict, citation_verdict, editorial >>
 
 \* lean_probe — the kernel leg. Under backend="lean" the mechanical verdict is
@@ -363,7 +443,69 @@ ExecuteLeanProbe ==
           THEN kernel_leg' = "degraded"
           ELSE kernel_leg' \in {"pass", "fail", "absent"}
     /\ UNCHANGED << backend, citation_leg, skeptic_leg,
+                    round, reattack_v, written_rounds,
                     evidence_verdict, citation_verdict, editorial >>
+
+\* --------------------------------------------------------------------------
+\* v4 RE-ATTACK LOOP — a bounded round machine, following the cosmon-dev seal's
+\* shape verbatim. `re_attack` is Runnable once skeptic and lean_probe are Done;
+\* it then iterates rounds 1..MaxRounds. Each round RE-RUNS the kernel and skeptic
+\* legs (fresh, non-deterministic verdicts, exactly as round 1's were). It folds
+\* to PROVED_CLEAN when the kernel is "pass" AND the skeptic is "clean" in the
+\* SAME state (the strict stop condition), and to EXHAUSTED at MaxRounds.
+\*
+\* `round = 0` is the `rounds = 1` world: ReAttackClean and ReAttackExhausted are
+\* BOTH reachable at round 0 without any round ever running, so the loop can fold
+\* over round 1's own legs and nucleate nothing. That is what makes rounds=1 the
+\* exact v3.x graph with one dormant node.
+\* --------------------------------------------------------------------------
+
+\* Advance one re-attack round (bounded by MaxRounds). The round re-runs the two
+\* legs, so their verdicts are freshly chosen; it writes its own RoundPath.
+ReAttackRound ==
+    LET n == Fix("re_attack") IN
+    /\ Runnable(n)
+    /\ round < MaxRounds
+    /\ ~(kernel_leg = "pass" /\ skeptic_leg = "clean")   \* else the loop stops
+    /\ round' = round + 1
+    /\ written_rounds' = written_rounds \cup { RoundPath(round + 1) }
+    /\ IF backend = "none"
+          THEN kernel_leg' = "degraded"
+          ELSE kernel_leg' \in {"pass", "fail", "absent"}
+    /\ skeptic_leg' \in {"clean", "blockers", "absent"}
+    /\ UNCHANGED << backend, status, written, citation_leg, reattack_v,
+                    evidence_verdict, citation_verdict, editorial >>
+
+\* The clean fixpoint — kernel PROVED and skeptic clean in the SAME round. The
+\* loop drains WITHOUT nucleating the remaining rounds: this is the runtime
+\* early-exit that a statically-unrolled design structurally cannot have.
+ReAttackClean ==
+    LET n == Fix("re_attack") IN
+    /\ Runnable(n)
+    /\ kernel_leg  = "pass"
+    /\ skeptic_leg = "clean"
+    /\ status'     = [status EXCEPT ![n] = "Done"]
+    /\ written'    = written \cup { ArtifactPath(n) }
+    /\ reattack_v' = "PROVED_CLEAN"
+    /\ UNCHANGED << backend, kernel_leg, citation_leg, skeptic_leg, round,
+                    written_rounds, evidence_verdict, citation_verdict,
+                    editorial >>
+
+\* Exhaustion — MaxRounds reached without the clean fixpoint. The loop folds to
+\* EXHAUSTED and NEVER to a pass; the evidence gate then reads the final round's
+\* legs, which by construction are not (pass /\ clean), so it refuses (backend
+\* "lean") or honestly DEGRADEs (backend "none"). Never a silent promotion.
+ReAttackExhausted ==
+    LET n == Fix("re_attack") IN
+    /\ Runnable(n)
+    /\ round = MaxRounds
+    /\ ~(kernel_leg = "pass" /\ skeptic_leg = "clean")
+    /\ status'     = [status EXCEPT ![n] = "Done"]
+    /\ written'    = written \cup { ArtifactPath(n) }
+    /\ reattack_v' = "EXHAUSTED"
+    /\ UNCHANGED << backend, kernel_leg, citation_leg, skeptic_leg, round,
+                    written_rounds, evidence_verdict, citation_verdict,
+                    editorial >>
 
 \* evidence_gate (v3.2 split gate, PRE-synthesis) — folds the KERNEL and SKEPTIC legs
 \* over existing evidence into the fail-closed evidence verdict. NO citation
@@ -374,8 +516,9 @@ ExecuteEvidenceGate ==
     /\ Runnable(n)
     /\ status'  = [status EXCEPT ![n] = "Done"]
     /\ written' = written \cup { ArtifactPath(n) }
-    /\ evidence_verdict' = EvidenceDecision(kernel_leg, skeptic_leg)
+    /\ evidence_verdict' = EvidenceDecision(kernel_leg, skeptic_leg, reattack_v)
     /\ UNCHANGED << backend, kernel_leg, citation_leg, skeptic_leg,
+                    round, reattack_v, written_rounds,
                     citation_verdict, editorial >>
 
 \* citation_gate (v3.2 split gate, POST-write) — runs the citation audit over the paper
@@ -389,7 +532,8 @@ ExecuteCitationGate ==
     /\ \E c \in {"pass", "fail", "absent"} :
           /\ citation_leg' = c
           /\ citation_verdict' = CitationDecision(c)
-    /\ UNCHANGED << backend, kernel_leg, skeptic_leg, evidence_verdict, editorial >>
+    /\ UNCHANGED << backend, kernel_leg, skeptic_leg, round, reattack_v,
+                    written_rounds, evidence_verdict, editorial >>
 
 \* editorial_verdict — the fail-closed SHIP/REWRITE gate over BOTH split gates.
 ExecuteEditorial ==
@@ -399,21 +543,32 @@ ExecuteEditorial ==
     /\ written'  = written \cup { ArtifactPath(n) }
     /\ editorial' = EditorialDecision(evidence_verdict, citation_verdict)
     /\ UNCHANGED << backend, kernel_leg, citation_leg, skeptic_leg,
+                    round, reattack_v, written_rounds,
                     evidence_verdict, citation_verdict >>
 
 Next ==
     \/ \E n \in Nodes : ExecutePlain(n)
     \/ ExecuteSkeptic
     \/ ExecuteLeanProbe
+    \/ ReAttackRound
+    \/ ReAttackClean
+    \/ ReAttackExhausted
     \/ ExecuteEvidenceGate
     \/ ExecuteCitationGate
     \/ ExecuteEditorial
 
 \* Weak fairness on every node's execution so drainage is guaranteed (liveness).
+\* The three re-attack actions are jointly exhaustive once the loop is Runnable:
+\* below MaxRounds either the fixpoint holds (ReAttackClean) or a round advances
+\* (ReAttackRound); at MaxRounds either the fixpoint holds (ReAttackClean) or the
+\* loop exhausts (ReAttackExhausted). So the loop always reaches Done.
 Fairness ==
     /\ \A n \in Nodes : WF_vars(ExecutePlain(n))
     /\ WF_vars(ExecuteSkeptic)
     /\ WF_vars(ExecuteLeanProbe)
+    /\ WF_vars(ReAttackRound)
+    /\ WF_vars(ReAttackClean)
+    /\ WF_vars(ReAttackExhausted)
     /\ WF_vars(ExecuteEvidenceGate)
     /\ WF_vars(ExecuteCitationGate)
     /\ WF_vars(ExecuteEditorial)
@@ -430,13 +585,20 @@ TypeOK ==
     /\ kernel_leg       \in {"absent", "pass", "fail", "degraded"}
     /\ citation_leg     \in {"absent", "pass", "fail"}
     /\ skeptic_leg      \in {"absent", "clean", "blockers"}
+    /\ round            \in 0..MaxRounds
+    /\ reattack_v       \in {"NONE", "PROVED_CLEAN", "EXHAUSTED"}
+    /\ written_rounds   \subseteq { RoundPath(i) : i \in 1..MaxRounds }
     /\ evidence_verdict \in {"NONE", "PASS", "DEGRADED", "BLOCKED"}
     /\ citation_verdict \in {"NONE", "PASS", "BLOCKED"}
     /\ editorial        \in {"NONE", "SHIP", "REWRITE"}
 
 \* ==========================================================================
 \* Property 1 — Termination (liveness): every node eventually drains to Done.
-\* Acyclic DAG + bounded fan-out + weak fairness => no cycle, no spin.
+\* Acyclic DAG + bounded fan-out + a re-attack loop bounded by MaxRounds + weak
+\* fairness => no cycle, no spin, no unbounded foaming. Note the loop does not get
+\* its own terminal state here: it drains to Done carrying either PROVED_CLEAN or
+\* EXHAUSTED, and the ESCALATION at exhaustion is expressed downstream (the
+\* evidence gate refuses on the final round's legs — see GateFailClosed).
 \* ==========================================================================
 Termination ==
     \A n \in Nodes : <>(status[n] = "Done")
@@ -465,6 +627,35 @@ AbsentEvidenceNeverPromotes ==
 AbsentCitationNeverPromotes ==
     (citation_leg = "absent") => citation_verdict \in {"NONE", "BLOCKED"}
 
+\* (c-bis, v4) An UNFOLDED re-attack loop can never yield a promoting evidence
+\* verdict.
+\*
+\* HONEST STATUS — this clause is REDUNDANT under the shipped wiring, and it is
+\* recorded here as such rather than sold as load-bearing. Because evidence_gate
+\* is blocked-by re_attack, the loop is always Done (hence folded) before the gate
+\* runs, so reattack_v = "NONE" is unreachable at the gate. Measured, not assumed:
+\* deleting the matching `rv = "NONE" -> BLOCKED` branch from EvidenceDecision
+\* leaves TLC green (negative test NEG-1). And the mis-wiring it was meant to
+\* catch — an evidence_gate re-pointed at skeptic/lean_probe so it bypasses the
+\* loop — IS rejected by the seal, but by ArtifactFlow (the gate would require
+\* "reattack_verdict" with no upstream producer), not by this clause (NEG-5).
+\*
+\* It is kept as a written statement of the gate's intent: if a future revision
+\* ever lets the gate become runnable while the loop is still iterating, this is
+\* the clause that says what must then hold. Do not cite it as the thing that
+\* makes the loop fail-closed — that is ArtifactFlow plus the blocked-by edge.
+UnfoldedLoopNeverPromotes ==
+    (reattack_v = "NONE") => evidence_verdict \in {"NONE", "BLOCKED"}
+
+\* (c-ter, v4) The loop folds to PROVED_CLEAN only on the STRICT stop condition:
+\* the kernel PROVED and the skeptic clean, in the SAME round. A kernel that
+\* proved while the skeptic still held BLOCKERs is NOT convergence, and a
+\* DEGRADED kernel (backend="none") can never reach it.
+ProvedCleanImpliesBothLegs ==
+    (reattack_v = "PROVED_CLEAN") =>
+        /\ kernel_leg  = "pass"
+        /\ skeptic_leg = "clean"
+
 \* (d) The editorial gate never SHIPs unless BOTH split gates established a
 \* promoting verdict (evidence PASS/DEGRADED and citation PASS).
 ShipImpliesGatesEstablished ==
@@ -477,23 +668,36 @@ GateFailClosed ==
     /\ CitationPassImpliesLeg
     /\ AbsentEvidenceNeverPromotes
     /\ AbsentCitationNeverPromotes
+    /\ UnfoldedLoopNeverPromotes
+    /\ ProvedCleanImpliesBothLegs
     /\ ShipImpliesGatesEstablished
 
 \* ==========================================================================
 \* Property 3 — NoResourceCollision (safety): no two distinct Done nodes have
 \* written the same artifact path. The fan-out suffix is what keeps this true.
 \* ==========================================================================
+\* v4 adds the ITERATED writer: no two re-attack rounds may write the same round
+\* path, and no round path may alias a node path. The round index is what keeps
+\* iterated writers disjoint, exactly as the fan-out index keeps parallel ones so.
 NoResourceCollision ==
-    \A m, n \in Nodes :
-        (m # n /\ status[m] = "Done" /\ status[n] = "Done")
-            => ArtifactPath(m) # ArtifactPath(n)
+    /\ \A m, n \in Nodes :
+          (m # n /\ status[m] = "Done" /\ status[n] = "Done")
+              => ArtifactPath(m) # ArtifactPath(n)
+    /\ \A i, j \in 1..MaxRounds : (i # j) => RoundPath(i) # RoundPath(j)
+    /\ \A i \in 1..MaxRounds : \A n \in Nodes : RoundPath(i) # ArtifactPath(n)
 
 \* ==========================================================================
 \* Property 4 — DeterministicParametrization (safety): the expansion is a pure
 \* function of the params. The node set equals its pure-function image at all
 \* times (germination is one-shot, not environment-perturbed), and both fan-outs
-\* are bounded: |Nodes| = 15 fixed + 2 per subquestion + 3 per observability
+\* are bounded: |Nodes| = 16 fixed + 2 per subquestion + 3 per observability
 \* stage (0 when observability is off — the instrumentation sub-DAG vanishes).
+\*
+\* v4, THE LOAD-BEARING POINT: `rounds` does NOT appear in this cardinality.
+\* `re_attack` is ONE node whose emergent children are ROUNDS, not extra nodes,
+\* so the node set stays param-independent of the loop bound — the property a
+\* statically-unrolled design (whose node count grew with R) would have lost.
+\* The only thing MaxRounds constrains here is the loop counter itself.
 \* ==========================================================================
 ExpandedNodes ==
     { Fix(r) : r \in FixedRoles }
@@ -506,6 +710,7 @@ DeterministicParametrization ==
          = Cardinality(FixedRoles)
            + Cardinality(SqFanoutRoles)  * Cardinality(Subquestions)
            + Cardinality(ObsFanoutRoles) * Cardinality(Observability)
+    /\ round <= MaxRounds
 
 \* ==========================================================================
 \* Property 5 — ArtifactFlow (v3.2, safety over the STATIC structure): every

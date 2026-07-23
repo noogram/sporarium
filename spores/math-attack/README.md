@@ -15,9 +15,18 @@ first — it defines every house term and every `cs` subcommand this README uses
 
 **A note on version numbers.** The manifests declare `version = 3` (and
 `cs spore validate` prints `(v3)`) — that is the spore-format *manifest* version.
-The prose calls this package **v3.2**: the iteration of the package's *content*
-(v3 → v3.1 → v3.2), independent of the manifest field. Both refer to the same
-files you are holding.
+The prose calls this package **v4**: the iteration of the package's *content*
+(v3 → v3.1 → v3.2 → v4), independent of the manifest field. Both refer to the
+same files you are holding.
+
+**What v4 adds.** One param (`rounds`), one node (`re-attack`), one formula
+(`converge-math-attack`) — a bounded **re-attack loop** that re-attacks the
+conjecture round after round, each round fed the previous round's faults and
+still-unproved list, stopping the moment the kernel proves it and the skeptic is
+clean. **Zero new spore-format primitives** (it reuses the shipped
+`emergent` + `[spore.node.bounds]` pair). At the default `rounds = 1` the loop
+germinates nothing and the graph is **exactly v3.2**. See
+[§5bis](#5bis-rounds--the-re-attack-loop-v4).
 
 ---
 
@@ -30,6 +39,12 @@ files you are holding.
 > It has **not** yet completed a real multi-day conjecture attack in an external
 > container. The claim "works out of the zip" is **frozen** until that container
 > run passes (see §9).
+>
+> **v4 specifically:** the seal was re-checked green by TLC (including the
+> shipment-gate bound and eight non-vacuity probes — §10), and the manifest
+> validates and expands. The re-attack loop has **not** been germinated
+> end-to-end at `rounds ≥ 2`; that, plus the driver-capability check on the
+> recipient's `cs`, is the acceptance work still owed before any v4 parcel ships.
 
 **Tested environment (what the acceptance run actually exercised):**
 
@@ -58,7 +73,7 @@ artifact-flow properties. It does **not** prove a worker can start, reach a
 model, or produce a non-empty artifact. Full boundary in [§2](#2-what-the-seal-certifies).
 
 **Expected shape / cost:** the **starter lane** (§1) is 4 molecules, one model,
-minutes. The **full lane** (§3) is **15 fixed nodes, 17 molecules at the default
+minutes. The **full lane** (§3) is **16 fixed nodes, 18 molecules at the default
 fan-out** (one subquestion → the two fan-out nodes germinate one instance each;
 more subquestions add two molecules apiece) across three model tiers — budget
 accordingly; there is **no built-in cost ceiling** (§9).
@@ -73,7 +88,7 @@ independently of whether the DAG completed.
 
 Your first run should be the **starter lane**: 4 nodes, one model
 (`claude-opus-4-8`), concurrency 1, no Lean / JVM / Zotero. It gets you one
-inspectable, hashed attack trace before you commit to the full lane (15 fixed
+inspectable, hashed attack trace before you commit to the full lane (16 fixed
 nodes, 17 molecules at the default fan-out).
 
 ```mermaid
@@ -82,7 +97,7 @@ flowchart LR
     init --> validate["cs spore validate<br/>(dry run — germinates nothing)"]
     validate --> lane{"which lane?"}
     lane -->|"start here"| starter["spore-starter.toml<br/>4 nodes, 1 model, no Lean"]
-    lane -->|"after inspecting the trace"| full["spore.toml<br/>15 fixed nodes, 3 tiers, Lean branch"]
+    lane -->|"after inspecting the trace"| full["spore.toml<br/>16 fixed nodes, 3 tiers, Lean branch"]
     starter --> run["cs spore run<br/>seal: verified (TLC)<br/>or --allow-unchecked-seal"]
     full --> run
     run --> germ["germination<br/>(molecules + blocked-by DAG)"]
@@ -161,10 +176,10 @@ prints `seal: verified <hash>` (cached by `BLAKE3(spore.tla ‖ spore.cfg)`).
 
 | Property | What it proves |
 |----------|----------------|
-| `Termination` | The DAG is acyclic and fan-out is bounded, so every germinated polymer drains. |
-| `GateFailClosed` | The evidence-gate refuses on an absent kernel/skeptic verdict; the citation-gate refuses on an absent citation audit; the editorial gate SHIPs only if **both** promoted. No leg silently degrades to "pass". |
-| `NoResourceCollision` | No two nodes write the same artifact path (the fan-out index keeps `proof-attempt-1` disjoint from `proof-attempt-2`). |
-| `DeterministicParametrization` | The node set is a pure function of the params: `|Nodes| = 15 + 2·|subquestions| + 3·|observability|`. |
+| `Termination` | The DAG is acyclic, fan-out is bounded by a param list, and the **re-attack loop is bounded by `rounds`** — so every germinated polymer drains. The cap is not what forbids a dynamic loop from being sealed; it is the exact device that *makes* one sealable (it turns an unbounded foam into a finite, decidable model). |
+| `GateFailClosed` | The evidence-gate refuses on an absent kernel/skeptic verdict **and on an unfolded re-attack loop**; the loop folds to `PROVED_CLEAN` **only** when the kernel proved *and* the skeptic was clean in the *same* round; the citation-gate refuses on an absent citation audit; the editorial gate SHIPs only if **both** promoted. No leg silently degrades to "pass". |
+| `NoResourceCollision` | No two nodes — **and no two re-attack rounds** — write the same artifact path (the fan-out index keeps `proof-attempt-1` disjoint from `proof-attempt-2`; the round index keeps `attack-round-1/` disjoint from `attack-round-2/`). |
+| `DeterministicParametrization` | The node set is a pure function of the params: `|Nodes| = 16 + 2·|subquestions| + 3·|observability|`. **`rounds` does not appear**: `re-attack` is *one* node whose emergent children are rounds, not extra nodes. |
 | `ArtifactFlow` *(v3.2)* | Every artifact a node **requires** has an upstream node that **produces** it. |
 
 **What the seal does NOT certify (accepted risk).** The model tracks only
@@ -221,10 +236,10 @@ per germinated molecule) or list them with `cs ensemble`; then
 `cs run <decompose-id>` and `cs tackle <trace-id>` separately.
 
 At the single-target default (`subquestions=["main"]`, observability off) the
-full lane is **17 calls** (15 fixed + 2 fan-out). `--var list=a,b,c` splits on
+full lane is **18 calls** (16 fixed + 2 fan-out). `--var list=a,b,c` splits on
 commas; `--json` emits one NDJSON line per call.
 
-### The DAG topology (v3.2, after the gate split)
+### The DAG topology (v4, gate split + re-attack loop)
 
 ```mermaid
 flowchart TD
@@ -242,8 +257,11 @@ flowchart TD
     lean --> probe["lean-probe<br/>(lake build verdict)"]
     lean --> corpus["red-team-corpus"]
 
-    skeptic --> evidence["evidence-gate<br/>(PRE-synthesis: kernel + skeptic)"]
-    probe --> evidence
+    skeptic --> react["re-attack<br/>(emergent, bounded loop)"]
+    probe --> react
+    react -.->|"reads prior round's faults + unproved;<br/>re-nucleates attempt+probe+skeptic forward;<br/>STOP on proved AND clean"| react
+
+    react --> evidence["evidence-gate<br/>(PRE-synthesis: kernel + skeptic,<br/>over the loop's FINAL round)"]
     corpus --> evidence
     evidence --> synth["synthesize"]
     synth --> paper["write-paper"]
@@ -253,7 +271,14 @@ flowchart TD
 
     classDef gate fill:#fde68a,stroke:#b45309,color:#000;
     class evidence,citation,editorial gate
+    classDef loop fill:#c7d2fe,stroke:#4338ca,color:#000;
+    class react loop
 ```
+
+At the default `rounds = 1` the `re-attack` node **germinates nothing**: the
+round-1 nodes are the untouched v3.2 nodes with their v3.2 filenames, and the
+evidence-gate folds round 1 directly. The graph above is then exactly the v3.2
+graph with one dormant node.
 
 The two branches — informal (`proof-attempt` / `notebooks` / `skeptic`) and
 formal (`lean-skeleton` / `lean-probe` / `red-team-corpus`) — fork from
@@ -278,6 +303,7 @@ gates (highlighted) are the fail-closed points.
 | `lean-skeleton` | `lean/` or `skeleton.md` | `theorem … := by sorry` — the fidelity anchor. |
 | `lean-probe` | `lean-probe-report.md` | `lake build` verdict: PROVED or UNPROVABLE_IN_BUDGET. |
 | `red-team-corpus` | `corpus/` + coverage | ≥ `adversarial_corpus_min` FALSE statements the kernel must reject. |
+| `re-attack` *(v4)* | `rounds.md`, `reattack-verdict.json`, `attack-round-K/…` | **Bounded feedback loop.** At `rounds=1`: nothing (dormant). At `rounds≥2`: one `attack-round-K/` per round with its own `proof-attempt-*.md`, `lean-probe-report.md`, `unproved.md`, `faults.md`. The verdict names which round is live. |
 | `evidence-gate` *(v3.2)* | `evidence-verdict.md` | **PRE-synthesis** fail-closed gate: kernel + skeptic legs over existing evidence. **No citation audit** (no paper yet). |
 | `synthesize` | `synthesis.md` | Proved / refuted / open, at what confidence. |
 | `write-paper` | the paper (LaTeX/md) | Attribution: **Noogram**. Every cite traces to a ledger row. |
@@ -334,6 +360,7 @@ fabricated citations) is required for `citation-gate` to pass.**
 | `origin` | string | no | `""` | Provenance / poser / motivation. |
 | `subquestions` | list\<string\> | no | `["main"]` | Attack targets. One ⇒ single-target; many ⇒ fan-out. **Never empty.** |
 | `formal_backend` | enum `lean\|none` | no | `none` | `lean` ⇒ a real kernel leg gates the evidence-gate; `none` ⇒ Lean branch skipped, kernel leg honestly DEGRADED. |
+| `rounds` *(v4)* | int | no | `1` | Bounded re-attack cycles. `1` ⇒ single shot, identical to v3.x. `K` ⇒ up to K re-attacks, each fed the prior round's faults + unproved list, **stopping early** on proved-and-clean. Ceiling **5**. See [§5bis](#5bis-rounds--the-re-attack-loop-v4). |
 | `adversarial_corpus_min` | int | no | `10` | Minimum false statements the red-team corpus must author. |
 | `literature_anchors` | list\<string\> | no | `["none — build the ledger from scratch"]` | Seed citations for the ledger. |
 | `observability` | list\<string\> | no | `[]` | Instrumentation gate. Empty ⇒ off. `--var observability=on` germinates the read-only `collector → dataviz → narrator` chain (+3 nodes). |
@@ -346,6 +373,83 @@ range over is a typo, not an intention.
 
 ---
 
+## 5bis. `rounds` — the re-attack loop (v4)
+
+On a conjecture that defeated a frontier system, **one pass will very likely not
+close it.** v3.x modelled a single shot: `proof-attempt → skeptic`, one
+`lean-probe`, then the gates. Re-cycling meant a *manual* re-germination — you
+read `faults.md` and `lean-probe-report.md`, hand-assembled a new brief, and
+germinated a fresh polymer. `rounds` turns that human loop into **data**.
+
+```
+round 1 (the v3.x attack)  → faults-1 + unproved-1
+   → round 2 (fed faults-1 + unproved-1 + only the sources the skeptic flagged missing)
+   → faults-2 + unproved-2 → …
+   → STOP when {kernel PROVED ∧ skeptic clean}   ⟵ the loop drains, early
+   → OR `rounds` reached ⇒ BLOCKED + escalate    ⟵ never a silent pass
+```
+
+**What repeats, what stays pinned.** Repeated per round: `proof-attempt` (×
+subquestions), `lean-probe`, `skeptic`. Pinned once and **never re-opened**: the
+frame and substrate (`decompose` → `frame-deliberation` → `source-ledger` →
+`concept-cards`), the **`lean-skeleton` fidelity anchor** (re-opening it would let
+the theorem drift *between rounds* — the exact failure the early fork exists to
+prevent), and `red-team-corpus` (it tests the *statement*, not proof progress).
+
+**Two numbers, on purpose.** `[spore.node.bounds].max_instances = 5` is the
+**structural ceiling** — the foaming bound the seal certifies, fixed for all
+runs. `rounds` is the **runtime target** *this* run counts to beneath it, and it
+may stop earlier on the stop condition.
+
+**Zero new format primitives.** `re-attack` is `kind = "emergent"` with a
+`[spore.node.bounds]` block — the same shipped pair the cosmon-dev spore's
+`converge` node already uses and already seals. A `fanout` could not express it:
+fan-out instances are parallel and mutually independent, and there is no channel
+for *"round K is blocked-by round K−1"*. Feedback is serial-dependent; emergent
+forward-nucleation is.
+
+### Cost — budget the worst case
+
+Per-round marginal cost is the re-nucleated bodies of one round: `proof-attempt`
+(× subquestions, reasoning tier), `lean-probe` (build tier), `skeptic` (reasoning
+tier). The source refresh is folded into the attempt brief, not a separate node.
+
+**A round is not a fixed unit of spend.** Each round re-reads the accumulating
+fault and unproved history, so token cost per call **rises with K** — budget
+*super-linearly*. The table gives the **worst case** (cap-exhausted, no early
+exit) as your ceiling; early exit only ever reduces it.
+
+| `rounds` | Worst-case node executions | Worst-case cost vs. `rounds=1` |
+|----------|---------------------------|-------------------------------|
+| `1` (default) | the v3.2 graph, unchanged | **1×** (baseline) |
+| `2` | + (N attempts + 1 probe + 1 skeptic) | ~2× the attack legs, **> 2×** in tokens |
+| `3` | + 2 × (N + 2) | ~3× the attack legs, **> 3×** in tokens |
+| `5` (ceiling) | + 4 × (N + 2) | ~5× the attack legs, **≫ 5×** in tokens |
+
+The loop is capped at 5 because the real limit is not compute — it is the
+**human review burden** of that many full rounds of proofs.
+
+For a conjecture hard enough to warrant this spore, early exit will fire *rarely*
+and the cap-exhaustion tail is the likely path. The gain is real but modest for
+the typical mission; it costs nothing to have.
+
+### Preconditions and refusals
+
+- **`rounds ≥ 2` needs a driver-capable `cs`** — one carrying `cs wait` and
+  `cs run --resident`, because the loop nucleates children mid-run and waits on
+  them. A frozen `cosmon-remote` pilot surface has neither and **cannot drive
+  this loop at all**. The convergence formula's `preflight` step checks both
+  before anything else and refuses with *"re-germinate with `rounds=1`"* rather
+  than half-running. Confirm this at germination time — it is a documented,
+  testable precondition of the parcel, not a silent one.
+- **`formal_backend = "none"`** means the kernel leg is honestly DEGRADED every
+  round, so the strict stop condition (*kernel PROVED*) can **never** fire and the
+  loop always runs to the cap. Either budget for that or run `rounds=1`.
+- **`rounds > 5`** should be refused at validate. **It currently is not** — see
+  [§9](#9-what-is-not-enforced-honest-boundary).
+
+---
+
 ## 6. Model access
 
 Each full-lane node runs on a model matched to its cognitive load, carried by a
@@ -354,7 +458,7 @@ Each full-lane node runs on a model matched to its cognitive load, carried by a
 
 | Tier | Model | Nodes |
 |------|-------|-------|
-| **Deep reasoning** | `claude-fable-5` | decompose, frame-deliberation, proof-attempt, skeptic, red-team-corpus, editorial-verdict |
+| **Deep reasoning** | `claude-fable-5` | decompose, frame-deliberation, proof-attempt, skeptic, red-team-corpus, editorial-verdict, re-attack (loop step) |
 | **Build / writing** | `claude-opus-4-8` | source-ledger, concept-cards, lean-skeleton, notebooks, lean-probe, synthesize, write-paper |
 | **Mechanical / observer** | `claude-sonnet-5` | trace, evidence-gate, chronicle, collector, dataviz, narrator |
 | **Citation** | `claude-sonnet-5` | citation-gate |
@@ -509,7 +613,22 @@ surprised:
 - **Orphan-recovery bounds.** No documented retry cap or checkpoint-across-
   resurrection guarantee. Drive with `cs run` and watch `cs status`.
 - **Cost ceilings.** `concurrency_cap` limits *simultaneous* workers, not
-  total tokens / money / wall-time. There is no stop-loss. Budget by hand.
+  total tokens / money / wall-time. There is no stop-loss. Budget by hand. With
+  `rounds ≥ 2` this matters more, not less — see the [§5bis cost
+  table](#cost--budget-the-worst-case).
+- **`rounds > max_instances` is NOT refused at validate** *(v4, cosmon-ward)*.
+  The `rounds` runtime target must never exceed the sealed structural ceiling
+  `[spore.node.bounds].max_instances = 5`; a larger value would drive the loop to
+  foam past the bound the seal certifies. `cs spore validate` **should** fail
+  closed on that, and today it does not: cosmon parses `max_instances`, echoes it
+  in `--json`, and never checks any param against it. Verified on `cs 0.2.2` —
+  `--var rounds=9` validates clean. This is a **runtime** gap, not a spore-content
+  one, and it is reported to the cosmon project rather than papered over here.
+  Two mitigations ship in the meantime: the ceiling is stated in the `rounds`
+  param description, and the convergence formula's `preflight` step re-checks the
+  bound and collapses before nucleating anything. Neither is a substitute for the
+  validate-time refusal — until it lands, **`rounds` is operator-disciplined, not
+  machine-enforced.**
 
 The **release gate** that would lift the "experimental" label: run this exact
 immutable zip + released `cs` for ≥24h in a tester-shaped linux/arm64 container,
@@ -531,8 +650,23 @@ export TLA2TOOLS_JAR=/path/to/cosmon/docs/specs/tla2tools.jar
 java -XX:+UseParallelGC -cp "$TLA2TOOLS_JAR" tlc2.TLC \
     -workers auto -config spore.cfg spore.tla
 # => Model checking completed. No error has been found.
-#    (~1050 distinct states, depth 23)
+#    (1382 distinct states, 4061 generated, depth 27 — measured for v4)
 ```
+
+The shipped `spore.cfg` models `MaxRounds = 3`: the **smallest** bound that
+exercises the loop as a real machine (two non-converged rounds, then exhaustion,
+with the clean fixpoint reachable at any round *including round 0* — the
+`rounds = 1` dormant world). The shipment-gate bound `MaxRounds = 5` was also run
+green (1570 distinct, depth 29): ~94 extra states per round, because the loop adds
+**one bounded scalar**, not a topology multiplier. Larger bounds hold *a fortiori*
+— the loop variant only grows the cap, never the shape.
+
+Eight loop states were confirmed **reachable** (each by running its negation as an
+invariant and observing the violation), so the seal is not vacuously green:
+exhaustion, the clean fixpoint, `round = MaxRounds`, the **runtime early exit**
+(`PROVED_CLEAN` with `round < MaxRounds`), the dormant `rounds=1` fold
+(`PROVED_CLEAN` at `round = 0`), `SHIP` (no v3.2 regression), and both cap
+outcomes (DEGRADED under `backend=none`, BLOCKED under `backend=lean`).
 
 The starter lane has its own proof — swap in `spore_starter.cfg` /
 `spore_starter.tla`. `ArtifactFlow` and `GateFailClosed` are load-bearing:
@@ -585,6 +719,7 @@ math-attack/
     temp-review.formula.toml          editorial-verdict review     (claude-fable-5; review-as-formula)
     citation-audit.formula.toml       the citation-gate leg        (claude-sonnet-5; lifted)
     mycelium.formula.toml             the chronicle fold           (claude-sonnet-5; lifted)
+    converge-math-attack.formula.toml the v4 re-attack loop body   (composes the shipped `while`)
 ```
 
 ---
@@ -625,8 +760,8 @@ spore; the terms below are the minimum.
 - **nucleate** — create one molecule from a formula (`cs nucleate <formula>`).
 - **tackle** — dispatch one AI worker onto one molecule (`cs tackle <id>`).
 - **polymer** — a whole DAG of molecules wired by `blocked-by` edges; the
-  finished shape of a multi-step mission. (This spore germinates a 15-to-17-node
-  polymer.)
+  finished shape of a multi-step mission. (This spore germinates a 16-to-18-node
+  polymer, plus up to 4 rounds of re-attack children when `rounds ≥ 2`.)
 - **mission** — informal name for a whole germinated polymer, referred to by its
   root molecule id (e.g. `cs deps <mission>` walks that polymer's dependency
   tree). "The mission" and "the polymer" name the same thing from two angles:
@@ -642,6 +777,15 @@ spore; the terms below are the minimum.
   reach a terminal `Done` state; the polymer drains when every node has.
 - **foaming** — uncontrolled growth of the DAG (unbounded child nucleation); the
   seal's `Termination` property proves this spore cannot foam.
+- **emergent node** *(v4)* — a node that nucleates its own children *at runtime*
+  rather than at germination, bounded by a `[spore.node.bounds]` block
+  (`max_instances`). That cap is what makes a dynamic loop **sealable**: it turns
+  an unbounded foam into a finite, decidable model. The `re-attack` node is this
+  spore's only one.
+- **forward nucleation** *(v4)* — how a loop stays acyclic: round K is created at
+  runtime `blocked-by` round K−1, which already exists. There is never a cycle,
+  because a round only ever depends on the past. Germinating round 1 is the
+  loop's *initialisation*, not an edge back into it.
 - **frontier** — the set of molecules currently ready to run (dependencies met).
 - **seal** — a TLA+ model (`spore.tla`) whose safety properties are mechanically
   checked by TLC before germination; see §2 for exactly what it certifies.
@@ -655,7 +799,8 @@ spore; the terms below are the minimum.
 | `cs spore validate <ref>` | Dry-run: parse + expand a spore, print the call list, germinate nothing. |
 | `cs spore run <ref>` | Germinate the spore into live molecules (seal-gated). |
 | `cs spore export <ref>` | Emit a content-addressed bundle hash + RO-Crate layer. |
-| `cs run --resident` | Resident runtime: walk the whole molecule ensemble, tackling ready nodes. |
+| `cs run --resident` | Resident runtime: walk the whole molecule ensemble, tackling ready nodes — **and absorb children nucleated mid-run** (what the v4 re-attack loop needs). |
+| `cs wait <id>` | Block until one molecule reaches a terminal state (the v4 loop waits on each round). |
 | `cs run <id>` | Legacy mode: walk the sub-DAG reachable from one root molecule. |
 | `cs tackle <id>` | Dispatch one worker onto one molecule (no DAG walk). |
 | `cs done <id>` | Tear down a finished molecule's worker session (destroys its `.worktrees/<id>/` scratch dir — durable artifacts live under `.cosmon/`, not there). |

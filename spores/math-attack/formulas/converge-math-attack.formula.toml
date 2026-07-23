@@ -1,0 +1,360 @@
+formula = "converge-math-attack"
+version = 1
+description = """
+The v4 RE-ATTACK convergence loop of the `math-attack` spore — re-attack a hard
+conjecture round after round, each round fed the previous round's faults and
+still-unproved list, until the kernel returns PROVED and the skeptic returns
+clean IN THE SAME ROUND, or `blocked` + human escalation at the `rounds` cap.
+
+WHY THIS EXISTS. v3.x models a SINGLE shot: proof-attempt -> skeptic, one
+lean-probe, then the gates. On a conjecture that defeated a frontier system one
+pass will very likely not close it, and re-cycling was a MANUAL re-germination
+(the operator reads faults.md + lean-probe-report.md, hand-assembles a new brief,
+germinates a fresh polymer). That human loop is exactly the orchestration the
+spore is supposed to ENCODE. This formula turns it into data: one integer param.
+
+REUSE, DO NOT REINVENT — this formula is PURE WIRING over one existing primitive:
+  * `while` (the cosmon-shipped iterate-until-condition loop). Its
+    `max_iterations` cap IS our `rounds` (a FATAL cap, not a benign exit). We do
+    NOT re-implement the loop; we drive `while` with a condition_check that reads
+    the round's kernel verdict and skeptic verdict.
+It is the math-attack analogue of the cosmon galaxy's
+`converge-clean-room.formula.toml`, which drives the same `while` discipline for
+a double clean-room review. Zero new spore-format primitives: the node that binds
+this formula is `kind = "emergent"` with a `[spore.node.bounds]` block, exactly as
+the `cosmon-dev` spore's `converge` node already is.
+
+WHAT REPEATS AND WHAT STAYS PINNED. Round 1 IS the spore's existing v3.x informal
++ formal branches, untouched — this formula never re-runs them. It only nucleates
+rounds K >= 2. Pinned once, never re-opened by this loop:
+  * `decompose`, `frame-deliberation`, `source-ledger`, `concept-cards` — the
+    frame and substrate are established once; every round re-uses them.
+  * `lean-skeleton` — THE FIDELITY ANCHOR. The theorem statement is fixed before
+    any round runs. Re-opening it would let the theorem drift between rounds, the
+    exact failure the early fork exists to prevent.
+  * `red-team-corpus` — a property of the STATEMENT, not of proof progress; it
+    anchors to `lean-skeleton` and pins with it.
+
+THE ROUND (K >= 2; 3+ nodes, nucleated FORWARD each iteration):
+      faults-{K-1} (prior skeptic) + unproved-{K-1} (prior lean-probe)
+      |
+      +--> proof-attempt-K x |subquestions|  (reasoning tier)  --+   these two run
+      |    (brief folds the bounded source refresh)              |   IN PARALLEL,
+      +--> lean-probe-K     (build tier, fed unproved-{K-1})   --+   as in round 1
+                                                                 v
+                                                          skeptic-K (reasoning)
+                                                                 |
+                                     kernel PROVED and skeptic clean ? --yes--> STOP
+                                                                 |
+                                                                no -> round K+1
+                                                       (all --blocked-by round K)
+
+STOP CONDITION (strict, the §9-item-4 default): the kernel returns PROVED
+(`lake build` exit 0, grep-clean of sorry/axiom) AND the skeptic returns clean,
+in the SAME round. A kernel that proved while the skeptic still holds BLOCKERs is
+NOT convergence. At `rounds` exhaustion: NEVER a silent pass -> `blocked` + human
+escalation (NOT-CONVERGED blocks like NOT-RUN).
+
+FAIL-CLOSED THROUGHOUT. An ABSENT or malformed `faults.md`, `lean-probe-report.md`,
+or round verdict reads as NOT-CONVERGED, never as convergence. A gate that cannot
+fail is not a gate.
+
+ACYCLICITY BY INITIALISATION. There is never a cycle: round 1 (the spore's pinned
+informal+formal branches) IS the initialisation. Each non-converged round
+nucleates FORWARD (fresh ids, `--blocked-by` the current round) -> a strictly
+acyclic temporal chain. `cs run --resident` absorbs the descendants nucleated
+mid-run; the auto-parent contract `COSMON_PARENT_MOL_ID` wires the new round to
+this molecule.
+
+DRIVER-CAPABILITY PRECONDITION (fail closed). Forward nucleation needs a
+DRIVER-CAPABLE executor: a local `cs` carrying `wait` and the
+`cs run --resident --sweep-every N` loop that absorbs the children a round
+nucleates mid-run. The frozen `cosmon-remote` pilot surface has neither and
+CANNOT drive this loop. Step `preflight` checks this FIRST and refuses with a
+livable message rather than half-running the loop.
+
+CROSS-FEED (the §9-item-1 default, MINIMAL): formal -> informal is ON (the
+proof-attempt brief carries the still-unproved list), informal -> formal is OFF
+(the round's lean-probe reads only its own `unproved-{K-1}`, not the skeptic's
+`faults-{K-1}`). Fork discipline: the formal branch stays minimal and independent.
+
+CONTEXT-ACCUMULATION CAP (the §9-item-5 default). Feed the LAST round's faults in
+full plus the CUMULATIVE still-unproved list, and a per-round SUMMARY (<= 40
+lines) of every earlier round's faults — never the full transcript of all prior
+rounds. Without this, per-round token cost grows without bound on a hard
+conjecture. Per-round cost still rises with K; it is not a flat unit of spend.
+
+VARIABLES:
+  - topic       : the convergence task (the spore interpolates the subject).
+  - subject     : short name of the conjecture (briefs the re-attack).
+  - problem_statement : the verbatim conjecture, to be PROVEN or REFUTED.
+  - rounds      : the runtime target -> `while` max_iterations. Exhaustion is
+                  `blocked` + escalation, never a silent pass. Must be <= the
+                  binding node's `[spore.node.bounds].max_instances` ceiling.
+  - subquestions : the attack targets re-attempted each round (fan-out width).
+  - formal_backend : lean | none. `none` => the kernel leg is honestly DEGRADED
+                  every round and the strict stop condition can never fire; the
+                  loop then runs to the cap and hands the evidence-gate a
+                  degraded kernel leg + the final skeptic verdict, exactly as
+                  v3.x does. Budget accordingly, or run with rounds=1.
+
+ARTIFACT PATHS — all artifacts (rounds.md, reattack-verdict.json, and each
+round's attack-round-K/ directory) MUST be written to the MOLECULE STATE DIRECTORY
+(the `molecule_dir` field from `cs --json observe {mol_id}`), NEVER the worktree.
+Round K writes ONLY under `attack-round-K/`; the round index is what keeps round 1
+disjoint from round 2 (the seal's NoResourceCollision has its teeth there).
+"""
+id_prefix = "reattack"
+freeze_on_last_step = false
+
+[vars.topic]
+description = "The convergence task, stated in one or more sentences."
+required = true
+
+[vars.subject]
+description = "Short name of the conjecture under attack (briefs every round)."
+required = true
+
+[vars.problem_statement]
+description = "The verbatim conjecture, phrased 'to be PROVEN or REFUTED, not assumed'."
+required = true
+
+[vars.rounds]
+description = "Runtime target for re-attack rounds -> `while` max_iterations. 1 => no re-attack round is nucleated (the v3.x single shot). Exhaustion is `blocked` + escalation, never a silent pass. MUST be <= the binding node's [spore.node.bounds].max_instances."
+default = "1"
+
+[vars.subquestions]
+description = "The attack targets re-attempted each round (the proof-attempt fan-out width)."
+default = "main"
+
+[vars.formal_backend]
+description = "lean | none. none => the kernel leg is DEGRADED every round and the strict stop condition can never fire; the loop runs to the cap."
+default = "none"
+
+# Tier 1 — this is the spore's ONE non-Tier-0 node: it nucleates children
+# (proof-attempt x N + lean-probe + skeptic) FORWARD each round. `measure =
+# "iterations"` is the finite bound = `rounds`, declared up front; the `while`
+# max_iterations cap enforces it and a verifier reads rounds.md to confirm the
+# loop terminated within bound.
+[tier]
+level = 1
+measure = "iterations"
+
+[[steps]]
+id = "preflight"
+title = "Refuse fast if the executor cannot drive a forward-nucleating loop"
+description = """
+MOLECULE_DIR is the `molecule_dir` field from `cs --json observe {mol_id}` —
+NEVER the worktree.
+
+This loop nucleates children mid-run and waits on them. That needs a
+DRIVER-CAPABLE executor. Check BEFORE doing anything else, and refuse with a
+livable message rather than half-running:
+
+  1. `cs wait --help` must succeed (the frozen `cosmon-remote` pilot surface has
+     no `wait`).
+  2. `cs run --help` must advertise `--resident` (the pilot surface's `run` is a
+     server-side drain and cannot absorb mid-run children).
+
+If EITHER check fails, write MOLECULE_DIR/reattack-verdict.json with
+{"verdict": "BLOCKED", "exit_reason": "executor-not-driver-capable", ...} and
+collapse this molecule with reason
+"re-attack: executor lacks `cs wait` / `cs run --resident` — re-germinate with
+rounds=1 (the v3.x single shot), which needs no driver". Do NOT attempt the loop.
+
+BOUND CHECK. Parse ${rounds} (default 1). If it is not a positive integer, or it
+exceeds the binding node's `[spore.node.bounds].max_instances` ceiling declared in
+spore.toml, collapse with reason "re-attack: rounds exceeds the sealed
+max_instances ceiling". This is defence in depth: `cs spore validate` should have
+refused already, and this is the second lock.
+
+EARLY EXIT AT rounds=1. If ${rounds} = 1 the loop nucleates NOTHING: round 1 (the
+spore's pinned informal+formal branches) already ran and IS the whole attack.
+Write rounds.md recording "rounds=1: no re-attack round nucleated (v3.x single
+shot)", jump straight to `emit-verdict`, and fold round 1's own skeptic +
+lean-probe verdicts. This is what makes rounds=1 the exact v3.x graph.
+"""
+acceptance = "The executor was proven driver-capable (`cs wait` present, `cs run --resident` present) or the molecule collapsed with the livable re-germinate-with-rounds=1 message. ${rounds} parsed, positive, and <= the sealed max_instances ceiling. At rounds=1 nothing was nucleated and rounds.md says so."
+model = "claude-sonnet-5"
+
+[[steps]]
+id = "init-ledger"
+title = "Initialise the round ledger and read round 1's verdicts"
+description = """
+Round 1 already ran: it is the spore's pinned `skeptic` and `lean-probe` nodes,
+upstream of this one. Germinating THIS molecule is the loop's initialisation
+(acyclicity by construction) — read round 1, do not re-run it.
+
+  1. Create MOLECULE_DIR/rounds.md with the header table:
+       | round | attempt ids | probe id | skeptic id | kernel | skeptic | converged? |
+     and record ${rounds}, ${subquestions}, ${formal_backend}, and the pinned
+     artifacts (concept-cards, source-ledger, lean-skeleton) every round re-uses.
+  2. Read round 1's `faults.md` (from the upstream skeptic) and
+     `lean-probe-report.md` (from the upstream lean-probe).
+     FAIL-CLOSED: either ABSENT or malformed => record round 1 as NOT-CONVERGED
+     with reason "missing/malformed verdict". A missing verdict is NEVER a pass.
+  3. Derive round 1's two verdicts:
+       kernel  = PROVED iff lean-probe-report.md reports `lake build` exit 0 AND
+                 grep-clean of sorry/axiom. Under formal_backend='none' the leg is
+                 DEGRADED, which is NOT PROVED.
+       skeptic = clean iff faults.md exists and has ZERO residual BLOCKER findings.
+  4. Extract `unproved-1` (the still-`sorry`'d theorems) and `faults-1` (the
+     BLOCKER + MAJOR findings). These are round 2's input.
+  5. Append the round-1 row.
+
+If round 1 already converged (kernel PROVED and skeptic clean), the loop's stop
+condition holds at the top of iteration 1 — nucleate NOTHING and go straight to
+`emit-verdict`. This is the runtime early-exit; it is the default behaviour, not
+a manual discipline.
+"""
+needs = ["preflight"]
+acceptance = "MOLECULE_DIR/rounds.md initialised with the header and the round-1 row carrying round 1's kernel + skeptic verdicts read from the UPSTREAM faults.md and lean-probe-report.md (never re-run). An absent or malformed verdict was recorded as NOT-CONVERGED, never clean. unproved-1 and faults-1 extracted. If round 1 converged, no round was nucleated."
+model = "claude-sonnet-5"
+
+[[steps]]
+id = "loop-until-proved-and-clean"
+title = "Re-attack forward until PROVED and clean, or block at the rounds cap"
+description = """
+Drive the loop with the `while` discipline — do NOT re-implement it. The
+condition is "not (kernel PROVED and skeptic clean)"; the body is "re-attack the
+conjecture, fed the prior round's faults + unproved list".
+
+Pseudocode (round 1 already read by `init-ledger`):
+    round = 1
+    while round < ${rounds}:
+        if kernel[round] == PROVED and skeptic[round] == clean:
+            break                       # the quality fixpoint — natural early exit
+
+        K = round + 1
+        mkdir MOLECULE_DIR/attack-round-K/     # the ONLY path round K writes
+
+        # --- the round body, nucleated FORWARD (strictly acyclic) -------------
+        # (a) informal: one proof-attempt per subquestion, fed faults + unproved
+        for sq in ${subquestions}:
+            attempt_id[sq] = cs nucleate task-work-reasoning --kind task \\
+                --decayed-from {this_mol_id} --tag temp:warm \\
+                --tag reattack-round:K \\
+                --var topic="MATH-ATTACK ${subject} — RE-ATTACK round K on
+                  subquestion <sq> of ${problem_statement}. Read
+                  attack-round-<K-1>/faults.md (or round 1's faults.md) IN FULL,
+                  the CUMULATIVE still-unproved list, and the <= 40-line summary
+                  of every earlier round. Fix what the skeptic broke; close what
+                  the kernel could not. BOUNDED SOURCE REFRESH: add ONLY the
+                  anchors the prior skeptic flagged as MISSING — fold them into
+                  this brief and cite them into the existing source-ledger rows;
+                  do NOT re-open the ledger wholesale. Reuse the pinned
+                  concept-cards and lean-skeleton verbatim — the theorem statement
+                  is FROZEN. Write attack-round-K/proof-attempt-<sq>.md. Never
+                  assert truth; prove or refute."
+
+        # (b) formal: one lean-probe, fed ONLY its own unproved list (cross-feed
+        #     informal->formal is OFF by design — fork discipline). It is NOT
+        #     blocked-by this round's attempts: blocking it there would be exactly
+        #     the informal->formal channel the fork discipline forbids, and would
+        #     serialize two legs that are meant to run in PARALLEL (the same
+        #     parallel-branch topology round 1 uses).
+        probe_id = cs nucleate task-work-build --kind task \\
+            --decayed-from {this_mol_id} \\
+            --tag temp:warm --tag reattack-round:K \\
+            --var topic="MATH-ATTACK ${subject} — LEAN PROBE round K. Backend:
+              ${formal_backend}. Attempt to discharge the theorems still listed
+              `sorry` in attack-round-<K-1>/unproved.md, against the FROZEN
+              lean-skeleton. Run `lake build`. Report each theorem PROVED (exit 0,
+              grep-clean of sorry/axiom) or UNPROVABLE_IN_BUDGET — never conflate
+              'couldn't find a proof' with 'false'. The LLM emits proof terms
+              only; `lake build` is the sole verdict (LLM firewall). Write
+              attack-round-K/lean-probe-report.md AND attack-round-K/unproved.md
+              (the still-sorry'd theorems). If backend='none', record the leg
+              SKIPPED/DEGRADED honestly — never 'pass'."
+
+        # (c) the round's skeptic, over the round's attempts
+        skeptic_id = cs nucleate task-work-reasoning --kind task \\
+            --blocked-by <all attempt_id> --blocked-by probe_id \\
+            --decayed-from {this_mol_id} --tag temp:warm \\
+            --tag reattack-round:K \\
+            --var topic="MATH-ATTACK ${subject} — SKEPTIC round K. You are the
+              adversary. Read every attack-round-K/proof-attempt-*.md. Hunt for
+              unjustified steps, hidden assumptions, circular reasoning,
+              mis-cited lemmas, scale-limited computations passed off as general.
+              Confirm explicitly whether each round-<K-1> BLOCKER was actually
+              FIXED or merely re-worded. Write attack-round-K/faults.md, one
+              numbered finding per fault, tagged BLOCKER / MAJOR / MINOR. A
+              non-empty BLOCKER set means NOT clean — do not soften."
+
+        cs wait <every id of round K>       # NEVER advance while a round runs
+        read attack-round-K/lean-probe-report.md -> kernel[K]
+        read attack-round-K/faults.md       -> skeptic[K]
+        # FAIL-CLOSE: either absent or malformed => NOT clean, never converged
+        append rounds.md row for round K
+        round = K
+
+    if not (kernel[round] == PROVED and skeptic[round] == clean):
+        # exhaustion — NEVER a silent pass
+        record exit_reason = "rounds-exhausted"; the verdict below is BLOCKED
+
+MANDATORY (same discipline as `while`):
+  1. Every nucleation carries `--decayed-from {this_mol_id}` (typed lineage) and
+     `--tag reattack-round:<K>` (auditability). `cs run --resident` absorbs them.
+  2. NEVER advance a round while the previous round is still running — `cs wait`
+     first. Parallel rounds would break the acyclic-forward invariant.
+  3. NEVER skip the `rounds` check — a runaway loop is the primary safety hazard;
+     the `while` cap and the molecule quota are the backstops.
+  4. A missing faults.md / lean-probe-report.md is NOT converged, never converged.
+  5. NEVER re-open `lean-skeleton` or `red-team-corpus`. The theorem statement is
+     the fidelity anchor and it is FROZEN for the whole loop; the corpus tests the
+     STATEMENT, not proof progress.
+  6. Round K writes ONLY under `attack-round-K/`. Writing round K's artifacts to
+     round K-1's path (or to the round-1 top-level names) is the exact collision
+     the seal's NoResourceCollision forbids.
+"""
+needs = ["init-ledger"]
+acceptance = "MOLECULE_DIR/rounds.md records every round with its attempt/probe/skeptic ids, the kernel verdict, the skeptic verdict, and the converged? flag. The loop exited EARLY the moment kernel PROVED and skeptic clean held in one round, or ran to ${rounds} and recorded exhaustion (never a silent pass). Each non-converged round nucleated proof-attempt x |subquestions| + lean-probe + skeptic FORWARD (--decayed-from, --blocked-by), strictly acyclic. A missing or malformed verdict was treated as NOT converged. lean-skeleton and red-team-corpus were never re-opened. Every round K wrote only under attack-round-K/."
+model = "claude-fable-5"
+
+[[steps]]
+id = "emit-verdict"
+title = "Emit the fail-closed re-attack verdict the evidence-gate reads"
+description = """
+Fold the loop into the machine-readable verdict the downstream evidence-gate
+reads. Write MOLECULE_DIR/reattack-verdict.json:
+
+  {
+    "verdict": "PROVED_CLEAN" | "BLOCKED",
+    "rounds_run": <k>,
+    "rounds_target": ${rounds},
+    "exit_reason": "clean-fixpoint" | "rounds-exhausted"
+                   | "executor-not-driver-capable",
+    "final_round": {
+      "round": <k>,
+      "kernel":  "PROVED" | "UNPROVABLE_IN_BUDGET" | "DEGRADED" | "ABSENT",
+      "skeptic": "clean" | "blockers" | "ABSENT",
+      "artifacts": {
+        "faults":  "<path to the final round's faults.md>",
+        "unproved": "<path to the final round's unproved list>",
+        "attempts": ["<path per subquestion>"]
+      }
+    },
+    "history": [ per-round {round, kernel, skeptic, blocker_count, unproved_count} ]
+  }
+
+verdict "PROVED_CLEAN" iff the loop reached the fixpoint (kernel PROVED AND
+skeptic clean in the SAME round) within ${rounds}. Exhaustion => "BLOCKED" with
+exit_reason "rounds-exhausted" and an explicit ESCALATION note naming the
+findings that never converged and the theorems that stayed `sorry`'d.
+
+FAIL-CLOSED: a missing or malformed reattack-verdict.json is read by the
+evidence-gate as BLOCKED. `final_round.artifacts` is the contract the
+evidence-gate depends on — it is what tells the gate WHICH round's faults.md and
+lean-probe-report.md are the live ones. Under formal_backend='none' the kernel is
+DEGRADED, never PROVED: the verdict is BLOCKED by this loop's strict stop
+condition, and the evidence-gate then folds the DEGRADED kernel leg + the final
+skeptic verdict exactly as it does in the v3.x single shot.
+
+Also write MOLECULE_DIR/synthesis.md: the round-by-round trajectory in plain
+prose — what each round fixed, what it could not, whether the unproved list
+SHRANK (real progress) or merely churned (the honest signal that more rounds will
+not help), and — if BLOCKED — the exact findings for the human escalation.
+"""
+needs = ["loop-until-proved-and-clean"]
+acceptance = "MOLECULE_DIR/reattack-verdict.json written with verdict / rounds_run / rounds_target / exit_reason / final_round (including the artifacts map the evidence-gate reads) / history. PROVED_CLEAN only when the kernel proved AND the skeptic was clean in the SAME round within the target; exhaustion is BLOCKED with a named escalation, never a silent pass. synthesis.md carries the round-by-round trajectory and says honestly whether the unproved list shrank or churned."
+model = "claude-opus-4-8"
