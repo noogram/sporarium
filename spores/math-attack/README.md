@@ -143,6 +143,19 @@ the run-scoped output home, the artifacts — lands under this directory's
 `.cosmon/state/`. Deleting the directory discards the whole mission and leaves
 the spore clone untouched.
 
+There are **two equally valid ways** to point a run at the spore from here;
+cosmon has no `install`/`import` verb (only `validate`/`run`/`export`), so
+"importing" a spore just means choosing one of these:
+
+- **Reference the clone in place** (used by the commands below): keep the spore
+  in the clone and name it by `"$SPORE/…"`. Pro: `git pull` gets author-side
+  fixes. This is the default this quickstart shows.
+- **Import a copy into your project** (self-contained): `mkdir -p spores && cp -R
+  "$SPORE" spores/math-attack`, then run from your project root with
+  `cs spore run spores/math-attack/spore.toml …`. Pro: the mission and the exact
+  spore bytes travel together; re-copy to pick up fixes. Either way, **run from
+  the project root** (see the ADR-161 note below).
+
 > ⚠️ **Two things to get right, or `cs spore run` refuses (cosmon ADR-161).**
 > The refusal looks like this, and it is a **refusal, not a crash** — nothing is
 > written and no molecule is created:
@@ -153,26 +166,24 @@ the spore clone untouched.
 >     refusing to germinate (ADR-161)
 > ```
 >
-> 1. **Name the spore by an ABSOLUTE path** (`"$SPORE/spore-starter.toml"`), never
->    a relative one. On `cs 0.2.2` a relative reference — `spore-starter.toml` or
->    `./spore-starter.toml` — triggers this refusal **from any directory**, even
->    when the run home is nowhere near the spore tree. That is an over-refusal in
->    the released binary (tracked as a cosmon-ward defect), and the absolute path
->    is the reliable way around it today.
+> 1. **Run `cs spore run` from your mission project root, not from inside the
+>    spore directory.** From the project root, the spore reference works **either
+>    way** — a relative path (`spores/math-attack/spore-starter.toml`) or an
+>    absolute one both germinate. The refusal fires only when the current
+>    directory is **inside the spore's own directory** and you name the spore by a
+>    bare relative reference (`spore-starter.toml`): cosmon then resolves the
+>    spore-definition boundary around your cwd and refuses, even though the output
+>    home is your project's `.cosmon/`. Staying at the project root avoids it
+>    entirely. (Verified on `cs 0.2.2`, build 94ba88c.)
 > 2. **Never `cs init` inside the spore directory or a copy of it.** That makes
 >    the spore's own directory the cosmon project root, so the output home cosmon
 >    hands each node genuinely lands inside the spore **definition** tree —
 >    writing instances back into the reusable template. This refusal is the
 >    invariant working as designed, and no flag overrides it.
 >
-> Standing inside `spores/math-attack/` is not itself fatal — with a repo-root
-> `.cosmon/` and an absolute reference it germinates. But it germinates into the
-> **clone's** state store, mixing your mission with the template you want to
-> `git pull`. The dedicated mission project above is what keeps those separate.
->
 > `cs spore validate` and `cs spore export` germinate nothing, so neither point
-> applies to them: both accept relative references and run fine from inside the
-> spore directory.
+> applies to them: both run fine from anywhere, including inside the spore
+> directory.
 
 **Step 3 — validate, then run the starter lane** (from the mission project):
 
