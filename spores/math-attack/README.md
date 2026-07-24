@@ -134,6 +134,13 @@ flowchart LR
   before `cargo install`.
 - Print your versions so a failure is diagnosable:
   `cs --version` and (if you will drive workers) `claude --version`.
+- **Choose your adapter — one export, once.** cosmon's built-in floor is
+  `local` (Ollama), *not* Claude Code, so this spore's `claude-*` model pins
+  need the `claude` adapter named explicitly or they are handed to a runtime
+  that cannot serve them. Before the first `cs run`:
+  `export COSMON_DEFAULT_ADAPTER=claude` (or commit `[adapters] default =
+  "claude"` in the mission project's `.cosmon/config.toml`). Full story, and
+  the multi-provider variants, in [§6](#6-model--adapter-access).
 
 **Step 1 — get the spore (a read-only template).**
 
@@ -579,7 +586,11 @@ The premortem (a pre-mortem review of v3 — "imagine this shipped and failed;
 list why") asked for portable single-model execution to be the *mechanically
 effective* default. That ask is met by the **starter lane**: every starter node binds
 one formula (`task-work-build`, `claude-opus-4-8`), so a recipient with a single
-model runs it with **no override at all**. Start there.
+model runs it with **no model override at all**. Start there.
+
+(That covers the *model* axis only. The *adapter* axis still needs the one-time
+choice in the box above — otherwise the starter lane's `claude-opus-4-8` pin is
+handed to the `local` floor, which is not a legal pair. One `export`, once.)
 
 ### On the full lane, `models=single` is posture + a global override
 
@@ -611,7 +622,7 @@ the same shape on purpose — learn one, you know the other.
 | 2 | **formula step `adapter = "…"`** | **formula step `model = "…"`** |
 | 3 | `$COSMON_DEFAULT_ADAPTER` | `$COSMON_DEFAULT_MODEL` (legacy: `$ANTHROPIC_MODEL`) |
 | 4 | mission `.cosmon/config.toml` `[adapters] default` | `[adapters.<name>] default_model` |
-| 5 | `~/.config/cosmon/config.toml` — same two keys | |
+| 5 | `~/.config/cosmon/config.toml` — `[adapters] default` | `~/.config/cosmon/config.toml` — `[adapters.<name>] default_model` |
 | 6 | built-in floor **`local`** | floor **none** — the adapter's own default |
 
 Two consequences worth internalising:
@@ -752,6 +763,13 @@ cs tackle <editorial-verdict-id> --adapter codex      # attempt 2, clean room
 Two SHIPs is corroboration. A SHIP then a REWRITE is the fault you would never
 have seen — and *that disagreement is the whole point of the exercise*. Read
 both artifacts; do not assume the second attempt supersedes the first.
+
+> **Evidence level on A2.** cosmon's attribution layer models re-tackle as a
+> numbered second attempt with its own adapter and model, which is what makes
+> this recipe coherent — but *we have not executed an A2 re-tackle on a
+> completed gate on this bench*. If your `cs` refuses to re-tackle a terminal
+> molecule, fall back to A1 (or Path B) and tell us via an issue. Everything
+> else in this section was exercised against `cs 0.2.2`.
 
 Either way nothing is edited, nothing is re-sealed, and each dispatch records
 `selection_source: "cli"` in `adapter_selected` — the split is auditable from
