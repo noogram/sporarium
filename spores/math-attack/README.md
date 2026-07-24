@@ -66,7 +66,11 @@ germinates nothing and the graph is **exactly v3.2**. See
 **Untested paths (be honest with yourself before relying on these):**
 a real end-to-end attack on a live conjecture; Linux/arm64 in a Docker sandbox;
 the pinned models being *reachable* on your account; worker death + recovery
-over a multi-day run. These are the subject of the follow-up container gate (§9).
+over a multi-day run; **the cross-provider clean-room lane of
+[§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review)** — the
+`adapter = "codex"` pins ship commented and have not been run end-to-end here,
+so treat that path as documented-and-plausible, not as bench-verified. These
+are the subject of the follow-up container gate (§9).
 
 **Seal scope in one line:** the TLC seal proves *abstract, bounded-DAG* gate +
 artifact-flow properties. It does **not** prove a worker can start, reach a
@@ -439,7 +443,7 @@ fabricated citations) is required for `citation-gate` to pass.**
 | `adversarial_corpus_min` | int | no | `10` | Minimum false statements the red-team corpus must author. |
 | `literature_anchors` | list\<string\> | no | `["none — build the ledger from scratch"]` | Seed citations for the ledger. |
 | `observability` | list\<string\> | no | `[]` | Instrumentation gate. Empty ⇒ off. `--var observability=on` germinates the read-only `collector → dataviz → narrator` chain (+3 nodes). |
-| `models` | enum `full\|single` | no | `full` | Model-access posture (advisory) — see [§6](#6-model-access). |
+| `models` | enum `full\|single` | no | `full` | Model-access posture (advisory) — see [§6](#6-model--adapter-access). |
 | `profile` | enum `starter\|full` | no | `starter` | Lane posture. `starter` ⇒ run `spore-starter.toml`; `full` ⇒ run this manifest. Advisory (separate manifests). |
 | `delivery` | enum `private\|staged\|public` | no | `private` | Delivery posture for the paper. |
 
@@ -528,11 +532,39 @@ the typical mission; it costs nothing to have.
 
 ---
 
-## 6. Model access
+## 6. Model & adapter access
 
-Each full-lane node runs on a model matched to its cognitive load, carried by a
-`model = …` pin on the formula step (the only in-zip channel: a spore node has no
-`model` field and the spore→nucleate path drops `--model`).
+There are **two independent axes**, and confusing them is the single most common
+way a first run surprises you:
+
+- **`model`** — *which model* answers. `claude-fable-5`, `claude-opus-4-8`, …
+- **`adapter`** — *which runtime* asks it. `claude` (the Claude Code CLI in a
+  tmux pane), `codex` (the OpenAI Codex CLI, likewise), `openai` / `anthropic`
+  (in-process HTTP), `local` / `ollama` (in-process, operator-run weights), and
+  a few more. `cs config adapters --json` lists every name yours accepts.
+
+Both travel on the **formula step** — the only in-zip channel, because a spore
+node has no `model` / `adapter` field and the spore→nucleate path drops the
+flags. Each resolves fresh at every `cs tackle`, and neither propagates across
+nucleation.
+
+> ⚠️ **The floor is `local`, not `claude`.** If you set nothing, `cs tackle`
+> falls through to the built-in `local` adapter — an Ollama-backed in-process
+> loop. That is deliberate (a paid dispatch is never inadvertent), but it means
+> **this spore's `claude-*` model pins are meaningless until you choose the
+> `claude` adapter**: a `claude-fable-5` id handed to `local` is an invalid
+> `(adapter, model)` pair. Do this once, before the quickstart:
+>
+> ```sh
+> export COSMON_DEFAULT_ADAPTER=claude        # this session only
+> ```
+> ```toml
+> # …or committed, in your MISSION project's .cosmon/config.toml:
+> [adapters]
+> default = "claude"
+> ```
+
+Each full-lane node then runs on a model matched to its cognitive load.
 
 | Tier | Model | Nodes |
 |------|-------|-------|
@@ -558,18 +590,45 @@ so `models=single` is a **posture declaration**, and the effective
 override is global:
 
 ```sh
-ANTHROPIC_MODEL=claude-opus-4-8 cs run --resident --poll-interval 10   # ranks above every pin
+COSMON_DEFAULT_MODEL=claude-opus-4-8 cs run --resident --poll-interval 10   # ranks above every pin
+# ($ANTHROPIC_MODEL is the legacy spelling of the same hammer and still works)
 # or per molecule:  cs tackle <molecule-id> --model claude-opus-4-8
 ```
 
 That a param cannot mechanically strip full-lane pins is a **missing spore
-primitive**, surfaced back to the cosmon project (not faked here).
+primitive**, surfaced back to the cosmon project (not faked here). The same
+gap applies to the adapter axis, which is why §6bis is edits-and-flags rather
+than `--var adapters=…`.
+
+### The two resolution chains, side by side
+
+Both are resolved fresh at every `cs tackle` (highest priority first). They are
+the same shape on purpose — learn one, you know the other.
+
+| Rung | Adapter | Model |
+|------|---------|-------|
+| 1 | `cs tackle --adapter <name>` | `cs tackle --model <id>` |
+| 2 | **formula step `adapter = "…"`** | **formula step `model = "…"`** |
+| 3 | `$COSMON_DEFAULT_ADAPTER` | `$COSMON_DEFAULT_MODEL` (legacy: `$ANTHROPIC_MODEL`) |
+| 4 | mission `.cosmon/config.toml` `[adapters] default` | `[adapters.<name>] default_model` |
+| 5 | `~/.config/cosmon/config.toml` — same two keys | |
+| 6 | built-in floor **`local`** | floor **none** — the adapter's own default |
+
+Two consequences worth internalising:
+
+- **The pair is never validated by cosmon.** The model id is carried opaquely;
+  an illegal `(adapter, model)` combination is rejected by the *backend, at
+  launch*. So when you move a step to another provider you must move **both**
+  lines — or drop the `model` pin and let that provider's own default apply.
+- **`cs run --resident` is not a second resolver.** With no `cs run --adapter`
+  directive it stamps nothing and the child `cs tackle` runs the full chain
+  above, so the formula-step pins in this spore are honoured under `--resident`
+  exactly as under a bare `cs tackle`.
 
 ### Print the realized model + adapter for every node
 
-To see exactly what each node will run on (the "realized execution
-matrix"), read each node's bound formula and its `model` pin, plus its
-`crew_role`:
+To see exactly what each node will run on (the "realized execution matrix"),
+read each node's bound formula and **both** its pins, plus its `crew_role`:
 
 ```sh
 cs spore validate "$SPORE/spore.toml" --var subject="…" --var problem_statement="…" --json \
@@ -578,18 +637,238 @@ import sys, json, re, os
 # formula paths in the JSON are relative to the SPORE directory, not to the
 # mission project you are standing in — resolve them against $SPORE.
 spore = os.environ.get("SPORE", ".")
+def pin(text, key):
+    # UNCOMMENTED pins only — a leading "#" is an opt-in the recipient has not taken.
+    m = re.search(r"(?m)^%s\s*=\s*\"([^\"]+)\"" % key, text)
+    return m.group(1) if m else None
 for line in sys.stdin:
     c = json.loads(line)
     f = os.path.join(spore, c["formula"])
-    model = "(no pin -> global default / --model)"
+    model, adapter = None, None
     if os.path.exists(f):
-        m = re.search(r"(?m)^\s*model\s*=\s*\"([^\"]+)\"", open(f).read())
-        if m: model = m.group(1)
-    alias = c["alias"]
-    role = c["vars"].get("crew_role", "-")
-    print("%-20s role=%-22s model=%s" % (alias, role, model))
+        t = open(f).read()
+        model, adapter = pin(t, "model"), pin(t, "adapter")
+    print("%-20s role=%-22s adapter=%-28s model=%s" % (
+        c["alias"], c["vars"].get("crew_role", "-"),
+        adapter or "(no pin -> env/config/local floor)",
+        model or "(no pin -> adapter default)"))
 '
 ```
+
+> **Read one caveat into that output.** The snippet reports the *first* pin in
+> each formula file, so a formula whose steps span tiers is under-reported:
+> `converge-math-attack` prints `claude-sonnet-5` (its `preflight` step) while
+> its actual re-attack step is pinned `claude-fable-5`, as the tier table above
+> says. Nodes on single-tier formulas — all the others — are exact. Commented
+> pins deliberately read as *no pin*, which is what they are.
+
+That reads *intent* from the package. For **ground truth after a run** — what
+actually dispatched, and from which rung — fold the event log:
+
+```sh
+jq -c 'select(.type == "adapter_selected")
+       | {mol: .mol_id, adapter: .adapter_name, from: .selection_source.source}' \
+   .cosmon/state/events.jsonl
+# => {"mol":"task-…-0528","adapter":"codex","from":"cli"}
+# => {"mol":"task-…-a715","adapter":"claude","from":"global_config"}
+```
+
+`selection_source` is an **object**, not a string — `.source` is one of
+`cli | formula_step | env_var | config | global_config | default`, and the
+remaining keys carry the provenance (`.flag` for `cli`, `.path` for a config
+row). The molecule key is `mol_id`, not `molecule_id`. Every `cs tackle` emits
+this line whether or not a flag was passed, so the question *"which provider
+scored my paper?"* is answered from disk, never from shell history.
+
+---
+
+## 6bis. Multi-model operation — cross-provider clean-room review
+
+### Why: author ≠ scorer is not yet author-provider ≠ scorer-provider
+
+[§11](#11-deliberation--adversarial-review-v31-kept) buys you *author ≠ scorer*:
+every gate is scored by a different **molecule** and a different **worker** than
+the one that authored the artifact. That kills the "I graded my own homework in
+the same context window" failure. It does **not** kill the deeper one: if author
+and scorer are the same model family, they share a training corpus, a tokenizer,
+and a family of blind spots. A confabulated lemma that reads plausible to the
+author reads plausible to the scorer — and gets stamped SHIP twice.
+
+On a conjecture hard enough to warrant this spore, that correlation is exactly
+where the false positive lives. The counter-measure is a **clean room**: run the
+scorer on a *different vendor's* model than the author. Two providers agreeing
+is weak evidence; two providers *disagreeing* is a fault you would otherwise
+never have seen.
+
+This is opt-in and off by default. Every candidate line is **shipped commented**
+in the formula files, so turning it on is uncommenting, not authoring.
+
+### Which gates are cheap to split
+
+Four of the five gates already sit on a **different formula file** than the node
+they score — flipping those is a one-file edit with no `spore.toml` change:
+
+| Gate (scorer) | its formula | scores the author… | author's formula | split cost |
+|---|---|---|---|---|
+| `editorial-verdict` | `temp-review` | `write-paper` | `editorial-work` | ✅ edit one file |
+| `citation-gate` | `citation-audit` | `write-paper` | `editorial-work` | ✅ edit one file |
+| `evidence-gate` | `task-work-mechanical` | `synthesize` | `task-work-build` | ✅ edit one file |
+| `red-team-corpus` | `task-work-reasoning` | the *statement* (decompose / lean-skeleton) | reasoning / build | ⚠️ shares with `proof-attempt` |
+| `skeptic` | `task-work-reasoning` | `proof-attempt` | **`task-work-reasoning`** | ⚠️ **same file as its author** |
+
+`skeptic` is the sharp one: it is the lane's primary adversary *and* it shares
+`task-work-reasoning` with the very node it audits. Uncommenting the adapter
+line in that file moves author **and** scorer together — a different provider,
+but **not** a clean room. Two honest ways out, below.
+
+### Path A — per-molecule flags (no file edits, use this first)
+
+`cs tackle --adapter` outranks every pin, so you can split providers on a
+*germinated* run without touching the parcel. But mind the race: a
+`cs run --resident` loop will tackle a scorer molecule the moment it goes
+pending, on the shipped pin, before you can type anything. So pick one of:
+
+**A1 — hand-drive, no resident loop.** Dispatch the frontier yourself in
+topological order; the gates get the flag, everything else does not.
+
+```sh
+cs tackle <proof-attempt-id>                       # shipped pin -> claude
+cs tackle <skeptic-id>           --adapter codex   # drop --model: Codex's own default applies
+cs tackle <editorial-verdict-id> --adapter codex
+cs tackle <citation-gate-id>     --adapter codex
+```
+
+**A2 — second opinion (recommended, and stronger).** Let the resident loop run
+the whole DAG on the shipped Claude pins, then **re-tackle** each gate
+cross-provider. A re-tackle opens a second attempt on the same molecule against
+the same artifact, so you end up holding *both* verdicts rather than replacing
+one with the other:
+
+```sh
+cs run <root-id> --resident --poll-interval 10        # complete run, all-Claude
+cs tackle <editorial-verdict-id> --adapter codex      # attempt 2, clean room
+```
+
+Two SHIPs is corroboration. A SHIP then a REWRITE is the fault you would never
+have seen — and *that disagreement is the whole point of the exercise*. Read
+both artifacts; do not assume the second attempt supersedes the first.
+
+Either way nothing is edited, nothing is re-sealed, and each dispatch records
+`selection_source: "cli"` in `adapter_selected` — the split is auditable from
+disk afterwards.
+
+> **Missing primitive.** `cs nucleate --adapter <name>` sets a *durable*
+> per-molecule pin that even a `cs run --resident --adapter <x>` directive
+> cannot override — which is exactly what a clean room wants. `cs spore run`
+> has **no `--adapter` passthrough**, so that pin is unreachable from the spore
+> path (the same gap as `--model`). Surfaced to the cosmon project rather than
+> faked here; until it lands, A1/A2 above are the honest substitutes.
+
+### Path B — in-zip pins (travels with the parcel, survives re-germination)
+
+Uncomment the shipped lines. Every step of every formula carries this block:
+
+```toml
+model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
+```
+
+So a clean room on the three cheap gates is three files:
+
+```sh
+# in your copy of the spore — comment the model pin, uncomment the adapter pin
+$EDITOR $SPORE/formulas/temp-review.formula.toml        # editorial-verdict
+$EDITOR $SPORE/formulas/citation-audit.formula.toml     # citation-gate
+$EDITOR $SPORE/formulas/task-work-mechanical.formula.toml   # evidence-gate (+ trace, instrumentation)
+```
+
+Note the blast radius of the third: `task-work-mechanical` is bound by five
+nodes, not one — `evidence-gate`, `trace`, and the optional instrumentation
+chain `collector` / `dataviz` / `narrator`. Moving the file moves all five.
+That is usually fine (the other four are transcription nodes), but it is not
+*only* the evidence gate. (`chronicle` is unaffected — it is on `mycelium`.)
+
+For **`skeptic`**, splitting it from `proof-attempt` needs a second formula
+file plus a one-line rebind:
+
+```sh
+cp $SPORE/formulas/task-work-reasoning.formula.toml \
+   $SPORE/formulas/task-work-reasoning-codex.formula.toml
+# in the copy: set formula = "task-work-reasoning-codex",
+#              comment out both `model` pins, uncomment both `adapter` pins
+```
+
+```toml
+# then in spore.toml — declare the new formula…
+[spore.formulas.task-work-reasoning-codex]
+path = "formulas/task-work-reasoning-codex.formula.toml"
+
+# …and rebind ONLY the skeptic node (leave proof-attempt on the claude tier):
+#   [[spore.node]]
+#   id      = "skeptic"
+#   formula = "task-work-reasoning-codex"      # was "task-work-reasoning"
+```
+
+**This changes the parcel.** Re-run `cs spore validate` (the seal re-checks: the
+edge set is untouched, so the TLA+ properties hold), and expect a **new
+`cs spore export` bundle hash** — you now ship a variant, not the shipped v4.
+
+### Configuring the `codex` adapter on your machine
+
+`codex` is a built-in adapter name — confirm with `cs config adapters --json`.
+It spawns the OpenAI Codex CLI in a tmux pane, so the CLI must be installed and
+authenticated on the machine running `cs`. Zero config is required; the block
+below is the escape hatch, and every line is optional:
+
+```toml
+# in your MISSION project's .cosmon/config.toml (NOT in the spore)
+[adapters.codex]
+# mode = "exec"                 # legacy fire-and-forget `codex exec '<prompt>'` batch path.
+                                # Absent = the default steerable TUI: the pane stays open,
+                                # `cs whisper` works, and the worker ends the leg by calling
+                                # `cs evolve` / `cs complete` — parity with the claude adapter.
+# default_model = "<codex-id>"  # per-adapter model default; scoped to codex, so it can never
+                                # leak onto a claude dispatch. Ranks BELOW a formula-step pin.
+# extra_args = ["--flag"]       # forwarded verbatim to the CLI — sandbox posture, model flag, …
+
+# and, so the CLAUDE-side nodes still land on Claude Code rather than the local floor:
+[adapters]
+default = "claude"
+```
+
+A `default_model` here that names a **strong** (frontier) model will fail
+`cs reconcile --check`: config may only ever *downgrade*. Strong is reachable
+from a formula-step pin or `--model`, never silently from config.
+
+### Honest boundary — what the clean room does NOT give you
+
+- **Nothing enforces it.** The TLA+ seal proves DAG topology; it says nothing
+  about provider assignment. A bare `cs tackle` on a gate whose formula you
+  edited *will* honour the pin — but a `--adapter` flag, an env export, or a
+  `cs run --adapter` directive all outrank it and can silently re-collapse the
+  two providers into one. **Verify with the `adapter_selected` fold above; do
+  not assume.**
+- **It is not an independence proof.** Two vendors are not two independent
+  observers: they train on overlapping public corpora, and on a famous
+  conjecture both may have absorbed the same wrong folklore proof. A
+  cross-provider SHIP is *stronger* evidence than a same-provider SHIP. It is
+  not a certificate.
+- **Tooling is not symmetric.** The `citation-audit` gate degrades on a
+  non-Claude adapter that has no reference-manager tool available: it falls back
+  to resolving DOIs over the network and returns more `L2_weak` verdicts. Read
+  those as *"not resolvable from here"*, not as *"the citation is bad"*.
+- **Cost and pace differ.** Two providers means two rate limits, two auth
+  states, and two failure modes. A gate that dies because a Codex session was
+  never authenticated looks, from the DAG, exactly like a gate that refused.
+  Check `trace/` ([§8](#8-the-always-on-trace-sidecar-v32)) before concluding.
+- **`models=single` does not cover this axis.** There is no `adapters` param.
+  A spore param cannot rewrite a formula file at germination — the same missing
+  primitive as the model axis, surfaced to cosmon rather than faked here.
 
 ---
 
@@ -637,7 +916,7 @@ current spore format *enforces* that a `proofsmith`-tagged molecule is dispatche
 to the `proofsmith` agent. Treat the crew map as a routing *intent*, not a proof.
 
 To see each node's realized formula / crew_role / model, use the command in
-[§6](#6-model-access). To inspect the flattened crew roster before running:
+[§6](#6-model--adapter-access). To inspect the flattened crew roster before running:
 `cs fleet resolve fleet.toml` (run `cs fleet --help` for the fleet verbs on your
 `cs`).
 
@@ -707,6 +986,19 @@ surprised:
   convergence formula's `preflight` step re-checks the bound at runtime before
   nucleating anything. So the ceiling is machine-enforced, not merely
   operator-disciplined.
+- **Provider assignment is not sealed.** The `.tla` proves DAG topology and
+  artifact flow; it says nothing about *which adapter* scores which node. A
+  cross-provider clean room ([§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review))
+  is a formula-step pin, and a `--adapter` flag, a `$COSMON_DEFAULT_ADAPTER`
+  export, or a `cs run --adapter` directive all outrank it — so a run you
+  *believe* is cross-provider can silently collapse to one vendor. There is no
+  gate that refuses it. Verify after the fact by folding `adapter_selected` out
+  of `events.jsonl` ([§6](#6-model--adapter-access)); the honest posture is
+  "checked the log", never "configured it once".
+- **No `--adapter` on the spore path.** `cs nucleate --adapter` sets a durable
+  per-molecule pin that beats a resident run directive; `cs spore run` has no
+  passthrough for it, so germinated molecules carry no durable provider intent.
+  Missing spore primitive, surfaced to cosmon (same shape as `--model`).
 
 The **release gate** that would lift the "experimental" label: run this exact
 immutable zip + released `cs` for ≥24h in a tester-shaped linux/arm64 container,
@@ -771,6 +1063,13 @@ authored the artifact: `skeptic` ≠ `proof-attempt`; `evidence-gate` /
 (`crew_role=reviewer`, the `temp-review` review-as-formula) ≠ `write-paper`
 (`crew_role=writer`). The reviewer *scores*; it does not rewrite.
 
+That separation is **molecule-level and worker-level, not provider-level**: by
+default every node in this spore runs on the same model family, so author and
+scorer share a training corpus and a family of blind spots. To break that
+correlation as well — a *clean room* — see
+[§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review), where
+every candidate step ships a commented `adapter = "codex"` pin.
+
 > **Naming note.** The original `temp-review` was literally a
 > *backlog-temperature* sweep. We lifted its **discipline** (structured steps +
 > fail-closed tabular acceptance + author ≠ scorer) and instantiated it as the
@@ -788,8 +1087,10 @@ math-attack/
   spore_starter.tla / .cfg         the starter-lane seal proof + TLC model
   fleet.toml                       the crew — a research-grade verification fleet (no sentinels)
   README.md                        this file
-  formulas/
+  formulas/                          every step carries a COMMENTED `adapter = "codex"`
+                                     pin — the cross-provider opt-in of §6bis
     task-work.formula.toml            generic agentic base (reference; no node binds it)
+                                      — the only formula pinning NEITHER axis
     task-work-reasoning.formula.toml  base + claude-fable-5   (proof/skeptic/red-team/decompose)
     task-work-build.formula.toml      base + claude-opus-4-8  (notebooks/lean/ledger/cards/synth; the starter tier)
     task-work-mechanical.formula.toml base + claude-sonnet-5  (trace/evidence-gate/instrumentation)
