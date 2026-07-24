@@ -89,19 +89,19 @@ independently of whether the DAG completed.
 Your first run should be the **starter lane**: 4 nodes, one model
 (`claude-opus-4-8`), concurrency 1, no Lean / JVM / Zotero. It gets you one
 inspectable, hashed attack trace before you commit to the full lane (16 fixed
-nodes, 17 molecules at the default fan-out).
+nodes, 18 molecules at the default fan-out).
 
 ```mermaid
 flowchart LR
-    clone["git clone sporarium<br/>cd spores/math-attack"] --> init["repo root already ships .cosmon/<br/>(no cs init — walk-up discovery)"]
-    init --> validate["cs spore validate<br/>(dry run — germinates nothing)"]
+    clone["git clone sporarium<br/>(the spore = read-only template)"] --> init["mkdir my-attack &amp;&amp; cd my-attack<br/>cs init  (a DEDICATED mission project,<br/>outside the clone)"]
+    init --> validate["cs spore validate $SPORE/…<br/>(dry run — germinates nothing)"]
     validate --> lane{"which lane?"}
     lane -->|"start here"| starter["spore-starter.toml<br/>4 nodes, 1 model, no Lean"]
     lane -->|"after inspecting the trace"| full["spore.toml<br/>16 fixed nodes, 3 tiers, Lean branch"]
-    starter --> run["cs spore run<br/>seal: verified (TLC)<br/>or --allow-unchecked-seal"]
+    starter --> run["cs spore run $SPORE/…<br/>seal: verified (TLC)<br/>or --allow-unchecked-seal"]
     full --> run
-    run --> germ["germination<br/>(molecules + blocked-by DAG)"]
-    germ --> drive["cs run --resident --poll-interval 10<br/>(tackle → artifacts)"]
+    run --> germ["germination<br/>(molecules + blocked-by DAG,<br/>in the mission project)"]
+    germ --> drive["cs run --resident --poll-interval 10<br/>(from the mission project)"]
     drive --> artifacts["artifacts + trace/ sidecar"]
 
     classDef gate fill:#fde68a,stroke:#b45309,color:#000;
@@ -110,48 +110,107 @@ flowchart LR
 
 **Prerequisites:**
 
-- **Get this spore** — clone the sporarium repository and work from the
-  spore's directory:
-
-  ```sh
-  git clone https://github.com/noogram/sporarium.git
-  cd sporarium/spores/math-attack
-  ```
-
-  (Working from the repo means you can `git pull` fixes and
-  [open issues](https://github.com/noogram/sporarium/issues) — please do.
-  A tagged release (e.g. `math-attack-v3.2`) is the immutable alternative:
-  `git checkout <tag>` pins the exact bytes of a shipped version.)
 - You cloned `github.com/noogram/cosmon` and installed the CLI
   (`cargo install --path crates/cosmon-cli --locked`, which installs to
   `~/.cargo/bin`), so `cs` is on your `PATH`.
   On Linux this build needs the OS packages **`pkg-config`** and
   **`libdbus-1-dev`** (a known cosmon build dependency on Linux); install them
   before `cargo install`.
-- The cloned repository root already carries a tracked `.cosmon/` scaffold
-  (config + a generic `task-work` formula + artifact map), so it is already a
-  cosmon project — `cs` commands work from the repo root, and from
-  `spores/math-attack/` too (cosmon discovers the parent `.cosmon/` by walking
-  up). No `cs init` is needed. You only need `cs init` if you copy
-  `spores/math-attack/` out to a separate directory with no `.cosmon/` above it.
 - Print your versions so a failure is diagnosable:
   `cs --version` and (if you will drive workers) `claude --version`.
 
-**Run the starter lane:**
+**Step 1 — get the spore (a read-only template).**
 
 ```sh
-cs spore validate spore-starter.toml \
+git clone https://github.com/noogram/sporarium.git
+SPORE="$PWD/sporarium/spores/math-attack"      # remember this path
+```
+
+Working from the repo means you can `git pull` fixes and
+[open issues](https://github.com/noogram/sporarium/issues) — please do.
+A tagged release (e.g. `math-attack-v3.2`) is the immutable alternative:
+`git checkout <tag>` pins the exact bytes of a shipped version.
+
+**Step 2 — create a dedicated mission project, OUTSIDE the clone.**
+
+```sh
+mkdir firoozbakht-attack && cd firoozbakht-attack
+cs init                # creates ./.cosmon/ — this dir is now a cosmon project
+```
+
+One mission project per attack. Everything the run produces — the molecules,
+the run-scoped output home, the artifacts — lands under this directory's
+`.cosmon/state/`. Deleting the directory discards the whole mission and leaves
+the spore clone untouched.
+
+There are **two equally valid ways** to point a run at the spore from here;
+cosmon has no `install`/`import` verb (only `validate`/`run`/`export`), so
+"importing" a spore just means choosing one of these:
+
+- **Reference the clone in place** (used by the commands below): keep the spore
+  in the clone and name it by `"$SPORE/…"`. Pro: `git pull` gets author-side
+  fixes. This is the default this quickstart shows.
+- **Import a copy into your project** (self-contained): `mkdir -p spores && cp -R
+  "$SPORE" spores/math-attack`, then run from your project root with
+  `cs spore run spores/math-attack/spore.toml …`. Pro: the mission and the exact
+  spore bytes travel together; re-copy to pick up fixes. Either way, **run from
+  the project root** (see the ADR-161 note below).
+
+> ⚠️ **Two things to get right, or `cs spore run` refuses (cosmon ADR-161).**
+> The refusal looks like this, and it is a **refusal, not a crash** — nothing is
+> written and no molecule is created:
+>
+> ```text
+> cs: node "decompose" would be handed a forbidden output home
+>     …/.cosmon/state/spore-runs/germ-…/decompose (InsideSporeDefinition);
+>     refusing to germinate (ADR-161)
+> ```
+>
+> 1. **Run `cs spore run` from your mission project root, not from inside the
+>    spore directory.** From the project root, the spore reference works **either
+>    way** — a relative path (`spores/math-attack/spore-starter.toml`) or an
+>    absolute one both germinate. The refusal fires only when the current
+>    directory is **inside the spore's own directory** and you name the spore by a
+>    bare relative reference (`spore-starter.toml`): cosmon then resolves the
+>    spore-definition boundary around your cwd and refuses, even though the output
+>    home is your project's `.cosmon/`. Staying at the project root avoids it
+>    entirely. (Verified on `cs 0.2.2`, build 94ba88c.)
+> 2. **Never `cs init` inside the spore directory or a copy of it.** That makes
+>    the spore's own directory the cosmon project root, so the output home cosmon
+>    hands each node genuinely lands inside the spore **definition** tree —
+>    writing instances back into the reusable template. This refusal is the
+>    invariant working as designed, and no flag overrides it.
+>
+> `cs spore validate` and `cs spore export` germinate nothing, so neither point
+> applies to them: both run fine from anywhere, including inside the spore
+> directory.
+
+**Step 3 — validate, then run the starter lane** (from the mission project):
+
+```sh
+cs spore validate "$SPORE/spore-starter.toml" \
   --var subject="Firoozbakht's conjecture" \
   --var problem_statement="p(n+1)^(1/(n+1)) < p(n)^(1/n) for all n>=1, to be PROVEN or REFUTED, not assumed"
 # => spore: math-attack-starter (v3) - 4 call(s)
 
-cs spore run spore-starter.toml \
+cs spore run "$SPORE/spore-starter.toml" \
   --var subject="Firoozbakht's conjecture" \
   --var problem_statement="p(n+1)^(1/(n+1)) < p(n)^(1/n) for all n>=1, to be PROVEN or REFUTED, not assumed" \
   --allow-unchecked-seal
+# => run home: <mission>/.cosmon/state/spore-runs/germ-<date>-<hex>
+# => Germinated spore math-attack-starter into 4 molecule(s): …
+#
 # on the released cs (reports "TLC unavailable"): --allow-unchecked-seal germinates
 #   the 4 molecules, status "seal: present, NOT verified" (see §2)
 # on a development-branch cs: drop the flag; it prints "seal: verified <hash>"
+```
+
+Then drive the run — also from the mission project, since that is where the
+molecules live:
+
+```sh
+cs status                                  # 4 alive
+cs run --resident --poll-interval 10
 ```
 
 The starter DAG is `decompose → proof-attempt → skeptic → trace`. There is **no
@@ -208,8 +267,12 @@ refused **unconditionally**; the flag cannot override a failed proof.
 
 ## 3. The full lane — validate → run
 
+Same posture as the starter lane: run these **from your dedicated mission
+project** (§1 step 2), naming the spore by path. `$SPORE` is
+`…/sporarium/spores/math-attack`.
+
 ```sh
-cs spore validate spore.toml \
+cs spore validate "$SPORE/spore.toml" \
   --var subject="Exponential-family stability" \
   --var problem_statement="The natural-parameter MLE map is globally Lipschitz on the mean-parameter polytope, to be PROVEN or REFUTED, not assumed" \
   --var subquestions="interior-strong-convexity,boundary-degeneracy,uniform-Lipschitz-constant" \
@@ -219,7 +282,7 @@ cs spore validate spore.toml \
   --var delivery=staged
 # => spore: math-attack (v3) - 21 call(s)   (3 proof-attempts || 3 notebooks; observability off)
 
-cs spore run spore.toml --var subject="…" --var problem_statement="…" \
+cs spore run "$SPORE/spore.toml" --var subject="…" --var problem_statement="…" \
   --allow-unchecked-seal
 # then drive the whole ensemble to completion (see "Which root?" below):
 tmux new -d -s runtime cs run --resident --poll-interval 10
@@ -497,12 +560,15 @@ matrix"), read each node's bound formula and its `model` pin, plus its
 `crew_role`:
 
 ```sh
-cs spore validate spore.toml --var subject="…" --var problem_statement="…" --json \
+cs spore validate "$SPORE/spore.toml" --var subject="…" --var problem_statement="…" --json \
 | python3 -c '
 import sys, json, re, os
+# formula paths in the JSON are relative to the SPORE directory, not to the
+# mission project you are standing in — resolve them against $SPORE.
+spore = os.environ.get("SPORE", ".")
 for line in sys.stdin:
     c = json.loads(line)
-    f = c["formula"]
+    f = os.path.join(spore, c["formula"])
     model = "(no pin -> global default / --model)"
     if os.path.exists(f):
         m = re.search(r"(?m)^\s*model\s*=\s*\"([^\"]+)\"", open(f).read())
@@ -642,8 +708,9 @@ case, and publish the trace.
 The seal's five properties are a TLA+ model (`spore.tla`) TLC checks against a
 small bounded world (`spore.cfg`). The checker jar (`tla2tools.jar`) ships in the
 cosmon repo at `docs/specs/tla2tools.jar` — point `TLA2TOOLS_JAR` at it and run
-the proof directly with any Java 11+ on your `PATH`, from inside
-`spores/math-attack/`:
+the proof directly with any Java 11+ on your `PATH`, from inside the spore
+directory (`cd "$SPORE"`). This one is pure Java — it germinates nothing, so
+the §1 mission-project rule does not apply:
 
 ```sh
 export TLA2TOOLS_JAR=/path/to/cosmon/docs/specs/tla2tools.jar
@@ -726,8 +793,11 @@ math-attack/
 
 ## 13. Export — a content-addressed bundle for sharing
 
+`export` germinates nothing, so (like `validate`) it may be run from anywhere,
+including inside the spore directory:
+
 ```sh
-cs spore export spore.toml --out dist/
+cs spore export "$SPORE/spore.toml" --out dist/
 # => bundle: blake3:…   (stable hash over spore.toml + every referenced formula/seal file)
 # => astra:  dist/ro-crate-metadata.json   (a descriptive-metadata sidecar)
 ```
@@ -766,6 +836,10 @@ spore; the terms below are the minimum.
   root molecule id (e.g. `cs deps <mission>` walks that polymer's dependency
   tree). "The mission" and "the polymer" name the same thing from two angles:
   the goal versus its DAG.
+- **mission project** — the directory you `cs init` to hold **one** germinated
+  mission: its `.cosmon/state/` stores the molecules, the run-scoped output home
+  and the artifacts. It is deliberately *not* the spore's own directory (§1
+  step 2) — a template must not be written into by its own instances.
 - **spore** — a shareable, parameterized *template* of a whole polymer: a fleet
   + per-node formulas + a parameter schema + the DAG + an optional `.tla` seal.
   This package is a spore.
@@ -794,7 +868,7 @@ spore; the terms below are the minimum.
 
 | Command | One-line meaning |
 |---------|------------------|
-| `cs init` | Create a `.cosmon/` project in the current directory. |
+| `cs init` | Create a `.cosmon/` project in the current directory — for this spore, the **mission project** you germinate into (§1 step 2). Never run it inside the spore directory. |
 | `cs nucleate <formula>` | Create one molecule from a formula (the single-molecule analogue of germination). |
 | `cs spore validate <ref>` | Dry-run: parse + expand a spore, print the call list, germinate nothing. |
 | `cs spore run <ref>` | Germinate the spore into live molecules (seal-gated). |
