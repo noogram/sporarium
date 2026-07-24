@@ -29,7 +29,25 @@ split `evidence-gate` / `citation-gate` (separate from synthesize/write-paper).
 
 Model pin: every step pins `model = "claude-fable-5"` — an adversarial
 review is a deep-reasoning step. Override with `cs tackle --model` /
-`ANTHROPIC_MODEL` (both rank above the pin). See README "Model access".
+`ANTHROPIC_MODEL` (both rank above the pin). See README "Model & adapter access".
+
+CLEAN-ROOM REVIEW (opt-in, commented on every step below). Author != scorer
+separates the MOLECULE and the WORKER, but if author and scorer run on the
+same provider they still share a training corpus, a tokenizer, and a family
+of blind spots — a mis-step both find plausible is scored SHIP twice. This
+formula is the FIRST place to break that correlation, because it is the pure
+scorer of the lane: it reads the paper and never writes it. Uncomment
+`adapter = "codex"` on all three steps (and comment out the `model` pins) to
+run the editorial verdict on a different vendor's model than the one that
+authored the paper. Sibling clean-room candidates, in priority order:
+`citation-audit` (citation-gate), `task-work-reasoning` (skeptic,
+red-team-corpus), `task-work-mechanical` (evidence-gate). See README §6bis.
+
+HONEST BOUNDARY: nothing mechanically enforces the split. The seal proves
+DAG topology, not provider assignment; the adapter axis is resolved fresh at
+each `cs tackle` and a bare `cs tackle` on the scorer node silently lands on
+whatever `[adapters.default]` says. Verify after the fact by folding
+`events.jsonl` for `adapter_selected` (README §6bis) — do not assume it.
 """
 id_prefix = "review"
 
@@ -55,6 +73,12 @@ evidence is never a pass.
 """
 acceptance = "MOLECULE_DIR/claims-ledger.md written: every claim and citation the paper makes, each with its purported support. Absent paper => recorded as REWRITE."
 model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
 
 [[steps]]
 id = "adversarial-verify"
@@ -83,6 +107,12 @@ make.
 needs = ["map"]
 acceptance = "Every claims-ledger.md row tagged CONFIRMED / OVERCLAIM / UNSUPPORTED-CITATION / UNADDRESSED-FAULT with evidence. No edits made to the paper itself."
 model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
 
 [[steps]]
 id = "verdict"
@@ -107,3 +137,9 @@ not this gate's.
 needs = ["adversarial-verify"]
 acceptance = "MOLECULE_DIR/editorial-verdict.md written: per-claim verdict table + overall SHIP/REWRITE + a non-empty DISSENT section. SHIP only when zero OVERCLAIM/UNSUPPORTED/UNADDRESSED, evidence-gate is PASS/DEGRADED, and citation-gate report is PASS; absent evidence => REWRITE. Missing dissent section BLOCKS promotion."
 model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"

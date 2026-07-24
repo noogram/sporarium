@@ -18,7 +18,7 @@ diverge only at the end: this leaf RECOMMENDS, it does not decompose.
 Model pin: every step pins `model = "claude-fable-5"` — a deliberation
 panel is the archetypal deep-reasoning step. Override with
 `cs tackle --model` / `ANTHROPIC_MODEL` (both rank above the pin). See
-README "Model access".
+README "Model & adapter access".
 
 Panel selection uses the `panel` variable:
   - panel="auto" (or unset): the worker chooses 3-5 personas from ITS OWN
@@ -68,6 +68,12 @@ Before drafting per-persona prompts, frame.md MUST declare:
 acceptance = "MOLECULE_DIR/frame.md written with (a) strate-count + numbered Qn sub-questions and (b) per-persona substitution hypotheses. Panel chosen and per-persona prompts drafted."
 acceptance_artifacts = ["frame.md"]
 model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
 
 [[steps]]
 id = "dispatch"
@@ -81,6 +87,12 @@ needs = ["frame"]
 acceptance = "N response files written to MOLECULE_DIR/responses/<persona>.md"
 acceptance_artifacts = ["responses/"]
 model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
 
 [[steps]]
 id = "synthesize"
@@ -110,6 +122,12 @@ needs = ["dispatch"]
 acceptance = "MOLECULE_DIR/synthesis.md complete with per-persona summaries, integrated synthesis, AND the frame-question coverage table (every Qn accounted for)."
 acceptance_artifacts = ["synthesis.md"]
 model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
 
 [[steps]]
 id = "recommend"
@@ -146,3 +164,9 @@ needs = ["synthesize"]
 acceptance = "MOLECULE_DIR/outcomes.md written as a recommendation: verdict + enumerated adjustments to the decomposition / falsifiability tests. NO molecules nucleated."
 acceptance_artifacts = ["outcomes.md"]
 model = "claude-fable-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"

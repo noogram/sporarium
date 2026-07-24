@@ -5,7 +5,13 @@ Execute a concrete task — the generic agentic base (implement -> verify), with
 NO model pin. It is the reference shape the three model-tier variants
 (task-work-{reasoning,build,mechanical}) derive from; no spore node binds this
 base directly (each node binds a tier variant so a per-node model allocation can
-travel on the formula step). See README "Model access".
+travel on the formula step). See README "Model & adapter access".
+
+NO ADAPTER PIN EITHER. Because this base pins neither a model nor an
+adapter, it is the one formula a recipient can run unchanged on ANY
+provider: every step resolves from `--adapter` / $COSMON_DEFAULT_ADAPTER /
+`[adapters.default]` / the built-in `local` floor. Rebinding the whole
+lane to this base is the crudest single-provider port (see README §6bis).
 """
 id_prefix = "task"
 
@@ -24,6 +30,8 @@ id = "implement"
 title = "Implement the solution"
 description = "Do the work described in the brief. Emit the leg's artifact."
 acceptance = "Implementation complete, the leg's artifact emitted"
+# Deliberately unpinned on BOTH axes. To pin a provider here, uncomment:
+# adapter = "codex"
 
 [[steps]]
 id = "verify"
@@ -36,3 +44,5 @@ honestly. Fix any issues.
 """
 needs = ["implement"]
 acceptance = "Artifact verified against its brief; build/test (if code) reported honestly"
+# Deliberately unpinned on BOTH axes. To pin a provider here, uncomment:
+# adapter = "codex"
