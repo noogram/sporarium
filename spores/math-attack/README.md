@@ -445,8 +445,11 @@ the typical mission; it costs nothing to have.
 - **`formal_backend = "none"`** means the kernel leg is honestly DEGRADED every
   round, so the strict stop condition (*kernel PROVED*) can **never** fire and the
   loop always runs to the cap. Either budget for that or run `rounds=1`.
-- **`rounds > 5`** should be refused at validate. **It currently is not** — see
-  [§9](#9-what-is-not-enforced-honest-boundary).
+- **`rounds > 5` is refused at validate.** The `rounds` runtime target may not
+  exceed the sealed structural ceiling `[spore.node.bounds].max_instances = 5`;
+  `cs spore validate`/`run` fail closed at expansion with *"var 'rounds' = N
+  exceeds its own [bounds] max_instances = 5"* (verified on `cs 0.2.2`, build
+  94ba88c — `--var rounds=9` exits non-zero). See [§9](#9-what-is-not-enforced-honest-boundary).
 
 ---
 
@@ -616,19 +619,16 @@ surprised:
   total tokens / money / wall-time. There is no stop-loss. Budget by hand. With
   `rounds ≥ 2` this matters more, not less — see the [§5bis cost
   table](#cost--budget-the-worst-case).
-- **`rounds > max_instances` is NOT refused at validate** *(v4, cosmon-ward)*.
-  The `rounds` runtime target must never exceed the sealed structural ceiling
+- **`rounds > max_instances` IS refused at validate** *(v4)*. The `rounds`
+  runtime target may not exceed the sealed structural ceiling
   `[spore.node.bounds].max_instances = 5`; a larger value would drive the loop to
-  foam past the bound the seal certifies. `cs spore validate` **should** fail
-  closed on that, and today it does not: cosmon parses `max_instances`, echoes it
-  in `--json`, and never checks any param against it. Verified on `cs 0.2.2` —
-  `--var rounds=9` validates clean. This is a **runtime** gap, not a spore-content
-  one, and it is reported to the cosmon project rather than papered over here.
-  Two mitigations ship in the meantime: the ceiling is stated in the `rounds`
-  param description, and the convergence formula's `preflight` step re-checks the
-  bound and collapses before nucleating anything. Neither is a substitute for the
-  validate-time refusal — until it lands, **`rounds` is operator-disciplined, not
-  machine-enforced.**
+  foam past the bound the seal certifies. cosmon fails closed at expansion —
+  `cs spore validate`/`run` abort with *"emergent node 're-attack': var 'rounds'
+  = N exceeds its own [bounds] max_instances = 5"* and a non-zero exit (verified
+  on `cs 0.2.2`, build 94ba88c — `--var rounds=9` refused). Defence in depth: the
+  convergence formula's `preflight` step re-checks the bound at runtime before
+  nucleating anything. So the ceiling is machine-enforced, not merely
+  operator-disciplined.
 
 The **release gate** that would lift the "experimental" label: run this exact
 immutable zip + released `cs` for ≥24h in a tester-shaped linux/arm64 container,
