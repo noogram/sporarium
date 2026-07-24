@@ -72,6 +72,18 @@ over a multi-day run. These are the subject of the follow-up container gate (§9
 artifact-flow properties. It does **not** prove a worker can start, reach a
 model, or produce a non-empty artifact. Full boundary in [§2](#2-what-the-seal-certifies).
 
+**Trust — a spore's prompts drive YOUR workers.** A spore is not passive data: its
+formulas are the prompts cosmon feeds to LLM workers that hold tools (Bash, Edit,
+Write) in your environment. Running a spore therefore executes its author's
+instructions against your fleet — a supply-chain / prompt-injection surface. **The
+seal does not cover this**: `.tla` proves DAG topology, not prompt content, so a
+spore can be validly sealed and still carry a hostile instruction in a node's
+briefing. Only run a spore whose **author you trust**, ideally pinned to a **signed
+tag** whose bytes you can diff (`git checkout math-attack-v3.2`), and skim the node
+prompts before a first run the way you would read a script before `curl | sh`.
+(This package is first-party — `github.com/noogram` — but treat *any* spore, ours
+included, on that basis.)
+
 **Expected shape / cost:** the **starter lane** (§1) is 4 molecules, one model,
 minutes. The **full lane** (§3) is **16 fixed nodes, 18 molecules at the default
 fan-out** (one subquestion → the two fan-out nodes germinate one instance each;
