@@ -148,6 +148,12 @@ flowchart LR
   absence degrades honestly: the run still delivers `paper.tex` +
   `references.bib` and records the missing toolchain in
   `paper/authoring-log.md` — you compile.
+- **Install the spore's formulas into your mission project's registry**
+  (`cp "$SPORE"/formulas/*.formula.toml .cosmon/formulas/`). Germinated
+  molecules name their formula by id and `cs` resolves it against
+  `.cosmon/formulas/`, not against the spore directory — skip this and every
+  model pin is silently ignored. See the boxed warning in
+  [§6](#6-model--adapter-access) for how to verify it took.
 
 **Step 1 — get the spore (a read-only template).**
 
@@ -604,7 +610,7 @@ the typical mission; it costs nothing to have.
 There are **two independent axes**, and confusing them is the single most common
 way a first run surprises you:
 
-- **`model`** — *which model* answers. `claude-opus-5`, `claude-opus-5`, …
+- **`model`** — *which model* answers. `claude-opus-5`, `claude-sonnet-5`, …
 - **`adapter`** — *which runtime* asks it. `claude` (the Claude Code CLI in a
   tmux pane), `codex` (the OpenAI Codex CLI, likewise), `openai` / `anthropic`
   (in-process HTTP), `local` / `ollama` (in-process, operator-run weights), and
@@ -614,6 +620,33 @@ Both travel on the **formula step** — the only in-zip channel, because a spore
 node has no `model` / `adapter` field and the spore→nucleate path drops the
 flags. Each resolves fresh at every `cs tackle`, and neither propagates across
 nucleation.
+
+> 🛑 **Install the formulas, or every pin is silently ignored.** A germinated
+> molecule stores its formula by **id** (`formula_id = "task-work-reasoning"`),
+> not by path. At tackle time `cs` resolves that id against the *mission
+> project's* registry, `.cosmon/formulas/` — **not** against the spore directory
+> you germinated from. If the spore's formula files are not in that registry,
+> the id resolves to nothing, no pin is found, and the run falls back to the
+> adapter's default **without saying so**. Copy them in before the first run:
+>
+> ```sh
+> cp "$SPORE"/formulas/*.formula.toml .cosmon/formulas/
+> ```
+>
+> Verify it took, rather than trusting it — the whole failure mode is silence:
+>
+> ```sh
+> python3 -c 'import json;[print(d["mol_id"],d["selection_source"]["source"]) \
+>   for d in map(json.loads,open(".cosmon/state/events.jsonl")) \
+>   if d.get("type")=="model_selected"]'
+> # want: source = formula_pin      (a "default" here means the pins are dead)
+> ```
+>
+> This bit us on the first full-lane run: the whole fleet ran flat on one model
+> from `[adapters.claude] default_model`, and the per-leg tiering documented
+> below never applied. Nothing failed, nothing warned — the run just quietly was
+> not the run described here. Set `default_model` as a *floor* beneath the pins,
+> never as a substitute for them.
 
 > ⚠️ **The floor is `local`, not `claude`.** If you set nothing, `cs tackle`
 > falls through to the built-in `local` adapter — an Ollama-backed in-process
