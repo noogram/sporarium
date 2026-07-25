@@ -405,6 +405,33 @@ gates (highlighted) are the fail-closed points.
 | `chronicle` | `docs/lore/CHRONICLES.md` | 0–3 entries, only if a principle was illuminated. |
 | `collector` / `dataviz` / `narrator` *(opt)* | `report/…` | **observability=on only.** Read-only charts over the drained DAG. |
 
+### Clean room — keep the worktree free of prior attacks (v5.1)
+
+The first full-lane run taught this the hard way. A solo attempt at the *same*
+conjecture was committed into the mission galaxy's working tree, at its root,
+under a generic filename, while the fleet was still running. Nothing in the spore
+said what counted as project material, so the fleet read it and folded it in — it
+surfaced in the source ledger, the concept cards, two proof attempts, the
+red-team corpus and the evidence verdict.
+
+The fleet handled it well: it flagged one of the document's expansions as
+**unsourced**, a proof attempt explicitly declined to use it, and no result
+rested on it. But *a run that has read a baseline cannot be compared against that
+baseline* — the benchmark was gone, silently.
+
+Two halves of the fix, and you need both:
+
+- **In the spore (automatic).** A constitution pillar plus per-node briefs declare
+  the input perimeter: your inputs are exactly your upstream artifacts, the
+  declared literature anchors, and sources you fetch and record in the ledger.
+  Any other file in the tree is **external prior art** — citable with provenance,
+  never an upstream artifact, never load-bearing.
+- **In your hands (the operator's half).** If you are running a benchmark
+  alongside — another model, a prior attempt, a published attack — keep it
+  **outside the mission worktree for the entire run**, in a sibling directory,
+  and bring the two together only when the fleet has drained. A file that is not
+  there cannot be read.
+
 ### Tracked delivery — the galaxy is the repo (v5)
 
 Before v5, nodes wrote only to the cosmon-injected run directory under

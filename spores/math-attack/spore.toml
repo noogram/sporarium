@@ -19,6 +19,23 @@
 #   skeptic) pins the theorem statement WHILE the informal proof is written, so
 #   statement drift cannot creep in during the skeptic loop.
 #
+# v5.1 DECLARED INPUT PERIMETER (brief-level; the v4 seal stands):
+#   Learned from the first full-lane run. A prior solo attack on the SAME
+#   conjecture was committed into the mission galaxy's working tree, at its root,
+#   under a generic filename, while the fleet was still running. The fleet found
+#   it and — with nothing in the spore saying otherwise — treated it as project
+#   material: it surfaced in the source ledger, the concept cards, two proof
+#   attempts, the red-team corpus and the evidence verdict. The fleet AUDITED it
+#   rather than swallowing it (it flagged one expansion as unsourced and routed
+#   around it), so no result rested on it — but a run that has read a baseline
+#   can no longer be compared against that baseline.
+#   The fix is a declared perimeter, in the constitution and in the scanning
+#   nodes' briefs: inputs are EXACTLY your upstream artifacts + the declared
+#   literature anchors + sources you fetch and ledger. Anything else in the tree
+#   is EXTERNAL PRIOR ART — citable with provenance, never an upstream artifact,
+#   never load-bearing. Operator counterpart: keep a benchmark run OUTSIDE the
+#   mission worktree for the whole run (README §"Clean room").
+#
 # v5 TRACKED DELIVERY + LaTeX PAPER (brief-level only — zero DAG change, the
 # v4 seal stands):
 #   * The galaxy IS the repo. Every operator-facing final artifact is ALSO
@@ -454,9 +471,13 @@ DECOMPOSE the attack surface into decompose.md: (a) the formal restatement; \
 proof or refutation must pass through; (c) candidate strategies (direct, \
 contrapositive, contradiction, construction, counterexample search); (d) the \
 falsifiability tests whose failure would REFUTE the conjecture. Formal backend \
-requested: ${params.formal_backend}. DELIVERY (v5): also copy the final \
-decompose.md to attack/decompose.md at the GALAXY ROOT (git-tracked) — the tree \
-copy is the published deliverable."""
+requested: ${params.formal_backend}. PERIMETER (v5.1): your inputs are the \
+problem statement and the declared literature anchors — nothing else. Any other \
+file already in the working tree, whatever its name, is EXTERNAL PRIOR ART, not \
+project material: name it in decompose.md with its provenance if relevant, and \
+build no obligation on it. DELIVERY (v5): also copy the final decompose.md to \
+attack/decompose.md at the GALAXY ROOT (git-tracked) — the tree copy is the \
+published deliverable."""
 
 # --- 1a. trace (v3.2 — always-on append-only sidecar) ----------------------
 # A ROOT node (no blocked-by => runnable the instant germination finishes, before
@@ -538,8 +559,12 @@ anchors: ${params.literature_anchors}. For every source, capture citekey, a \
 precise locator (theorem / proposition / page) and the exact statement it \
 supplies. This ledger is the citation substrate the citation-gate will \
 verify — every claim in the final paper must trace to a row here. \
-DELIVERY (v5): also copy the final source-ledger.md to attack/source-ledger.md \
-at the GALAXY ROOT (git-tracked)."""
+PERIMETER (v5.1): a ledger row is a PUBLISHED source you fetched and located — \
+never a file that merely happens to sit in the working tree. If such a file is \
+worth mentioning, give it its own EXTERNAL PRIOR ART section with explicit \
+provenance, clearly outside the citable ledger, so nothing downstream can cite \
+it as if it were literature. DELIVERY (v5): also copy the final \
+source-ledger.md to attack/source-ledger.md at the GALAXY ROOT (git-tracked)."""
 
 # --- 3. concept-cards -----------------------------------------------------
 [[spore.node]]
@@ -554,8 +579,10 @@ MATH-ATTACK ${params.subject} — CONCEPT CARDS. From decompose.md and \
 source-ledger.md, write one concept-card per load-bearing definition, lemma or \
 technique needed for ${params.problem_statement}. Each card: precise statement, \
 its role in the proof-obligation tree, its dependencies, and the source-ledger \
-row it rests on. Emit concept-cards/. DELIVERY (v5): also copy the final \
-concept-cards/ to attack/concept-cards/ at the GALAXY ROOT (git-tracked)."""
+row it rests on. Emit concept-cards/. PERIMETER (v5.1): every card rests on a \
+source-ledger row or on an upstream artifact — never on an unrelated file found \
+in the working tree. DELIVERY (v5): also copy the final concept-cards/ to \
+attack/concept-cards/ at the GALAXY ROOT (git-tracked)."""
 
 # --- 4a. proof-attempt (fan-out over subquestions) ------------------------
 [[spore.node]]
