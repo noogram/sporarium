@@ -450,10 +450,17 @@ v5 makes delivery a contract, at brief level (zero DAG change — the v4 seal
 stands):
 
 - Every operator-facing final artifact is **also written to a git-tracked path
-  at the galaxy worktree root**: `attack/` (the scientific chain: decompose,
-  ledger, cards, attempts, notebooks, faults, reports, verdicts, synthesis),
-  `paper/` (tex + bib + pdf + authoring log), `lean/`, `corpus/`, `trace/`,
-  `report/` (observability), `docs/lore/` (chronicle).
+  in the worker's own worktree, and committed on its branch**: `attack/` (the
+  scientific chain: decompose, ledger, cards, attempts, notebooks, faults,
+  reports, verdicts, synthesis), `paper/` (tex + bib + pdf + authoring log),
+  `lean/`, `corpus/`, `trace/`, `report/` (observability), `docs/lore/`
+  (chronicle).
+- **Never into the shared main checkout.** A worker runs in a git worktree. If
+  it writes a deliverable straight into the main checkout instead, that file is
+  untracked there, and `cs done` aborts the merge — *"the following untracked
+  working tree files would be overwritten by merge"* — with the resident runtime
+  retrying the same failure in a tight loop and the whole DAG stalled behind it.
+  This is the one way tracked delivery bites; the briefs say it explicitly.
 - The molecule-state copy remains the gates' working substrate; re-attack loop
   internals (`attack-round-K/`) may stay there, with `rounds.md`, the verdict
   and the **final** round promoted to `attack/re-attack/`.
