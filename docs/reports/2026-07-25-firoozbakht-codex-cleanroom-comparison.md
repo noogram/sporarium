@@ -11,6 +11,8 @@ subjects:
   - reproducible reasoning
 ---
 
+> English edition: [2026-07-25-firoozbakht-codex-cleanroom-comparison.en.md](2026-07-25-firoozbakht-codex-cleanroom-comparison.en.md)
+
 # Firoozbakht : comparaison Codex pur / Noogram clean room
 
 ## Résumé exécutif
