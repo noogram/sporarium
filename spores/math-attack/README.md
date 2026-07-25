@@ -141,6 +141,13 @@ flowchart LR
   `export COSMON_DEFAULT_ADAPTER=claude` (or commit `[adapters] default =
   "claude"` in the mission project's `.cosmon/config.toml`). Full story, and
   the multi-provider variants, in [§6](#6-model--adapter-access).
+- **A TeX toolchain (full lane, v5).** `write-paper` mandates a compiled
+  state-of-the-art LaTeX article (`latexmk -xelatex` over
+  `paper/paper.tex` + biblatex). Install TeX Live / MacTeX so `latexmk` is on
+  `PATH`. Like Lean/Mathlib, this is a declared recipient dependency, and its
+  absence degrades honestly: the run still delivers `paper.tex` +
+  `references.bib` and records the missing toolchain in
+  `paper/authoring-log.md` — you compile.
 
 **Step 1 — get the spore (a read-only template).**
 
@@ -392,11 +399,37 @@ gates (highlighted) are the fail-closed points.
 | `re-attack` *(v4)* | `rounds.md`, `reattack-verdict.json`, `attack-round-K/…` | **Bounded feedback loop.** At `rounds=1`: nothing (dormant). At `rounds≥2`: one `attack-round-K/` per round with its own `proof-attempt-*.md`, `lean-probe-report.md`, `unproved.md`, `faults.md`. The verdict names which round is live. |
 | `evidence-gate` *(v3.2)* | `evidence-verdict.md` | **PRE-synthesis** fail-closed gate: kernel + skeptic legs over existing evidence. **No citation audit** (no paper yet). |
 | `synthesize` | `synthesis.md` | Proved / refuted / open, at what confidence. |
-| `write-paper` | the paper (LaTeX/md) | Attribution: **Noogram**. Every cite traces to a ledger row. |
+| `write-paper` *(v5)* | `paper/paper.tex` + `paper/references.bib` + `paper/paper.pdf` + `paper/authoring-log.md` | **State-of-the-art LaTeX article, mandatory** (article class, amsmath+amsthm+hyperref, biblatex; compiled `latexmk -xelatex` when a TeX toolchain is present). Attribution: **Noogram**. Every cite traces to a ledger row. |
 | `citation-gate` *(v3.2)* | `verification-report.md` | **POST-write** citation audit over the paper (which now exists). Fail-closed. |
 | `editorial-verdict` | `editorial-verdict.md` (+ `claims-ledger.md`) | Fail-closed SHIP or REWRITE. Author ≠ scorer. |
 | `chronicle` | `docs/lore/CHRONICLES.md` | 0–3 entries, only if a principle was illuminated. |
 | `collector` / `dataviz` / `narrator` *(opt)* | `report/…` | **observability=on only.** Read-only charts over the drained DAG. |
+
+### Tracked delivery — the galaxy is the repo (v5)
+
+Before v5, nodes wrote only to the cosmon-injected run directory under
+`.cosmon/state/spore-runs/…` — which the standard `.cosmon/.gitignore` ignores
+in bulk. `cs done` then merged **zero tracked files**: the science existed, but
+the galaxy's git tree stayed empty, and publishing meant a hand-copied staging
+detour (exactly the failure the first full-lane run hit).
+
+v5 makes delivery a contract, at brief level (zero DAG change — the v4 seal
+stands):
+
+- Every operator-facing final artifact is **also written to a git-tracked path
+  at the galaxy worktree root**: `attack/` (the scientific chain: decompose,
+  ledger, cards, attempts, notebooks, faults, reports, verdicts, synthesis),
+  `paper/` (tex + bib + pdf + authoring log), `lean/`, `corpus/`, `trace/`,
+  `report/` (observability), `docs/lore/` (chronicle).
+- The molecule-state copy remains the gates' working substrate; re-attack loop
+  internals (`attack-round-K/`) may stay there, with `rounds.md`, the verdict
+  and the **final** round promoted to `attack/re-attack/`.
+- `editorial-verdict` **verifies the contract held** — a missing tracked
+  deliverable is a REWRITE reason, so the tree cannot silently end up empty.
+
+Consequence: after the DAG drains and `cs done` merges, the recipient galaxy is
+publishable **exactly as generated** — `git push` and you are done, no staging
+copy, no scrub detour for the science itself (secrets hygiene stays on you).
 
 ### The split gate (v3.2 — the gate-split repair)
 

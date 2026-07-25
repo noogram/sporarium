@@ -19,6 +19,23 @@
 #   skeptic) pins the theorem statement WHILE the informal proof is written, so
 #   statement drift cannot creep in during the skeptic loop.
 #
+# v5 TRACKED DELIVERY + LaTeX PAPER (brief-level only — zero DAG change, the
+# v4 seal stands):
+#   * The galaxy IS the repo. Every operator-facing final artifact is ALSO
+#     written to a git-tracked path at the recipient galaxy's worktree root
+#     (attack/, paper/, lean/, corpus/, trace/, report/, docs/lore/), never ONLY
+#     under .cosmon/state/ (git-ignored). `cs done` merges the tree, so the
+#     galaxy is publishable exactly as generated — the flow-matching-gaussians
+#     posture. Molecule-state copies remain the gates' working substrate; loop
+#     internals (attack-round-K/) may stay there. editorial-verdict verifies the
+#     contract held (a missing tracked deliverable is a REWRITE reason).
+#   * write-paper now MANDATES a state-of-the-art LaTeX article: paper/paper.tex
+#     (article class, amsmath + amsthm + hyperref, biblatex over
+#     paper/references.bib), compiled `latexmk -xelatex` to paper/paper.pdf when
+#     a TeX toolchain is on PATH — else tex+bib delivered and the gap recorded
+#     honestly in paper/authoring-log.md. The recipient's TeX toolchain is a
+#     declared prerequisite (README), like Lean/Mathlib.
+#
 # v4 RE-ATTACK LOOP (the one addition over v3.2):
 #   * `rounds` (int, default 1) + ONE new node `re-attack` (kind = "emergent",
 #     bounded by [spore.node.bounds]) + ONE new formula (converge-math-attack,
@@ -437,7 +454,9 @@ DECOMPOSE the attack surface into decompose.md: (a) the formal restatement; \
 proof or refutation must pass through; (c) candidate strategies (direct, \
 contrapositive, contradiction, construction, counterexample search); (d) the \
 falsifiability tests whose failure would REFUTE the conjecture. Formal backend \
-requested: ${params.formal_backend}."""
+requested: ${params.formal_backend}. DELIVERY (v5): also copy the final \
+decompose.md to attack/decompose.md at the GALAXY ROOT (git-tracked) — the tree \
+copy is the published deliverable."""
 
 # --- 1a. trace (v3.2 — always-on append-only sidecar) ----------------------
 # A ROOT node (no blocked-by => runnable the instant germination finishes, before
@@ -471,7 +490,8 @@ into trace/, never mutate. Emit trace/events.jsonl, trace/briefs.md and \
 trace/hashes.tsv. This is the consolation artifact: even if the attack stalls or \
 a worker dies, trace/ must let a third party reconstruct what ran, on what model, \
 producing what bytes. Charts are OPTIONAL (the observability chain); this raw \
-capture is NOT."""
+capture is NOT. DELIVERY (v5): trace/ lives at the GALAXY ROOT (git-tracked), \
+not only under .cosmon/state/."""
 
 # --- 1b. frame-deliberation (v3.1, addition 2) ----------------------------
 # A multi-persona panel (wheeler/feynman/godel dispositions) that stress-tests
@@ -499,7 +519,9 @@ this zip). Each persona attacks: is the proof-obligation tree complete and \
 non-circular? Do the falsifiability tests actually have teeth (would their \
 failure REFUTE the conjecture)? What is the decomposition quietly assuming? \
 Emit a recommendation (outcomes.md) naming the weakest branches and what must \
-change — recommend only, do NOT nucleate; the DAG downstream honors it."""
+change — recommend only, do NOT nucleate; the DAG downstream honors it. \
+DELIVERY (v5): also copy outcomes.md + synthesis.md to \
+attack/frame-deliberation/ at the GALAXY ROOT (git-tracked)."""
 
 # --- 2. source-ledger -----------------------------------------------------
 [[spore.node]]
@@ -515,7 +537,9 @@ authoritative bibliography for the attack on ${params.problem_statement}. Seed \
 anchors: ${params.literature_anchors}. For every source, capture citekey, a \
 precise locator (theorem / proposition / page) and the exact statement it \
 supplies. This ledger is the citation substrate the citation-gate will \
-verify — every claim in the final paper must trace to a row here."""
+verify — every claim in the final paper must trace to a row here. \
+DELIVERY (v5): also copy the final source-ledger.md to attack/source-ledger.md \
+at the GALAXY ROOT (git-tracked)."""
 
 # --- 3. concept-cards -----------------------------------------------------
 [[spore.node]]
@@ -530,7 +554,8 @@ MATH-ATTACK ${params.subject} — CONCEPT CARDS. From decompose.md and \
 source-ledger.md, write one concept-card per load-bearing definition, lemma or \
 technique needed for ${params.problem_statement}. Each card: precise statement, \
 its role in the proof-obligation tree, its dependencies, and the source-ledger \
-row it rests on. Emit concept-cards/."""
+row it rests on. Emit concept-cards/. DELIVERY (v5): also copy the final \
+concept-cards/ to attack/concept-cards/ at the GALAXY ROOT (git-tracked)."""
 
 # --- 4a. proof-attempt (fan-out over subquestions) ------------------------
 [[spore.node]]
@@ -548,7 +573,10 @@ concept-cards and source-ledger, attempt to PROVE or REFUTE this target. Emit \
 proof-attempt-${index}.md: the argument in full rigor, every step justified or \
 flagged as a gap; if refuted, the explicit counterexample; if stuck, the \
 precise obstruction. Do NOT assert the conjecture true — a target reaches \
-'proved' only through the kernel/Lean leg downstream. Backend: ${params.formal_backend}."""
+'proved' only through the kernel/Lean leg downstream. Backend: \
+${params.formal_backend}. DELIVERY (v5): also copy the final \
+proof-attempt-${index}.md to attack/proof-attempt-${index}.md at the GALAXY \
+ROOT (git-tracked)."""
 
 # --- 4b. notebooks (fan-out over subquestions, parallel to proof-attempt) -
 [[spore.node]]
@@ -565,7 +593,9 @@ MATH-ATTACK ${params.subject} — COMPUTATIONAL NOTEBOOKS for target '${item}' \
 notebooks (numeric / symbolic experiments, small-case verification, \
 counterexample search) that stress target '${item}'. Emit notebook-${index} + \
 a findings note: what the computation supports, what it refutes, at what scale. \
-Computation corroborates or refutes; it NEVER constitutes the proof."""
+Computation corroborates or refutes; it NEVER constitutes the proof. \
+DELIVERY (v5): also copy the final notebook + findings note to \
+attack/notebook-${index}/ at the GALAXY ROOT (git-tracked)."""
 
 # --- 5. skeptic (converge: proof-attempt || notebooks) --------------------
 [[spore.node]]
@@ -582,7 +612,9 @@ proof-attempt-*.md and every notebook finding. Hunt for: unjustified steps, \
 hidden assumptions, circular reasoning, mis-cited lemmas, and scale-limited \
 computations passed off as general. Write faults.md: one numbered finding per \
 fault, each tagged BLOCKER / MAJOR / MINOR. A non-empty BLOCKER set BLOCKS the \
-seal downstream — do not soften. If genuinely clean, say so with the checks you ran."""
+seal downstream — do not soften. If genuinely clean, say so with the checks \
+you ran. DELIVERY (v5): also copy the final faults.md to attack/faults.md at \
+the GALAXY ROOT (git-tracked)."""
 
 # --- 6. lean-skeleton (fidelity anchor; forks from concept-cards) ---------
 # PARALLEL FORMAL BRANCH (v2): this node depends on concept-cards, NOT skeptic,
@@ -602,7 +634,9 @@ statement MUST be a faithful transcription of the conjecture — this is the \
 fidelity anchor, and a wrong statement makes every downstream proof \
 meaningless. If 'none': write the skeleton as a precise natural-language \
 statement block and mark the Lean branch SKIPPED honestly; the seal will \
-degrade to the skeptic + editor legs only. Emit lean/ or skeleton.md."""
+degrade to the skeptic + editor legs only. Emit lean/ or skeleton.md. \
+DELIVERY (v5): lean/ (or attack/skeleton.md) lives at the GALAXY ROOT \
+(git-tracked)."""
 
 # --- 7a. lean-probe -------------------------------------------------------
 [[spore.node]]
@@ -620,7 +654,9 @@ proof terms; run `lake build`. Report each theorem as PROVED (lake build exit \
 'couldn't find a proof' with 'false'. If 'none': record the Lean leg as \
 SKIPPED (no backend). Emit lean-probe-report.md with the build exit code and \
 the per-theorem verdict. The LLM emits proof terms only; `lake build` is the \
-sole verdict (LLM firewall)."""
+sole verdict (LLM firewall). DELIVERY (v5): the discharged lean/ tree lives at \
+the GALAXY ROOT (git-tracked); also copy lean-probe-report.md to \
+attack/lean-probe-report.md."""
 
 # --- 7b. red-team-corpus (parallel to lean-probe) -------------------------
 [[spore.node]]
@@ -638,7 +674,9 @@ near-miss variants, wrong quantifier order, dropped hypotheses, universe / \
 typing cheats. Each entry: statement, expected_verdict=false, category, \
 provenance. The corpus proves the checker rejects what it should. Emit corpus/ \
 + coverage-report.md. If backend='none', author them as natural-language \
-false-statement challenges for the skeptic to confirm are rejected."""
+false-statement challenges for the skeptic to confirm are rejected. \
+DELIVERY (v5): corpus/ lives at the GALAXY ROOT (git-tracked); also copy \
+coverage-report.md to attack/coverage-report.md."""
 
 # --- 7c. re-attack (v4 — the bounded feedback loop) -----------------------
 # ZERO NEW FORMAT PRIMITIVES. This is `kind = "emergent"` + a [spore.node.bounds]
@@ -690,7 +728,10 @@ skeptic is clean, stop now — that is the fixpoint. Otherwise re-attack forward
 up to ${params.rounds} rounds, each round fed the previous round's faults, the \
 still-unproved theorems, and ONLY the source anchors the prior skeptic flagged \
 missing. The lean-skeleton statement is FROZEN for the whole loop. At the cap, \
-emit BLOCKED + a named escalation — never a silent pass."""
+emit BLOCKED + a named escalation — never a silent pass. DELIVERY (v5): loop \
+internals (attack-round-K/) stay in the molecule state dir per the formula, \
+but ALSO copy rounds.md, reattack-verdict.json and the FINAL round's \
+attack-round-K/ to attack/re-attack/ at the GALAXY ROOT (git-tracked)."""
 
 # --- 8. evidence-gate (converge: re-attack + red-team-corpus) --------------
 # v3.2 (SPLIT GATE): the PRE-synthesis evidence gate. It gates on the KERNEL and
@@ -725,7 +766,9 @@ corpus is present and its coverage report is non-empty. Emit evidence-verdict.md
 PASS only if all applicable legs pass (DEGRADED if the kernel leg is honestly \
 degraded and the rest pass), else BLOCKED with the failing leg named. Absent \
 evidence => BLOCKED, never PASS. The paper's citation audit happens LATER, at \
-citation-gate, once write-paper has produced the paper."""
+citation-gate, once write-paper has produced the paper. DELIVERY (v5): also \
+copy evidence-verdict.md to attack/evidence-verdict.md at the GALAXY ROOT \
+(git-tracked)."""
 
 # --- 9. synthesize --------------------------------------------------------
 [[spore.node]]
@@ -749,23 +792,33 @@ merely churned (say so plainly — it is the honest signal that more rounds will
 not help). Every round's artifacts are on disk under attack-round-K/. At \
 rounds=1 there is one round and it is round 1. The citation audit is NOT yet run \
 (it gates the paper at citation-gate, downstream) — do not claim citation \
-clearance here."""
+clearance here. DELIVERY (v5): also copy the final synthesis.md to \
+attack/synthesis.md at the GALAXY ROOT (git-tracked)."""
 
 # --- 10. write-paper ------------------------------------------------------
 [[spore.node]]
 id          = "write-paper"
 kind        = "fixed"
 formula     = "editorial-work"         # opus-4-8: editorial parity (addition 4)
-description = "Write the paper from the synthesis; every citation traces to a source-ledger row. External attribution: Noogram."
+description = "Write a state-of-the-art LaTeX article (v5: LaTeX mandatory — paper.tex + references.bib + compiled paper.pdf under tracked paper/) from the synthesis; every citation traces to a source-ledger row. External attribution: Noogram."
 [spore.node.vars]
 crew_role = "writer"
 topic = """
 MATH-ATTACK ${params.subject} — WRITE PAPER on ${params.problem_statement}. \
-From synthesis.md, write the paper (LaTeX or markdown): statement, method, \
-proof / refutation, computational evidence, honest limitations. Every citation \
-must trace to a source-ledger row. Delivery posture: ${params.delivery}. \
-External attribution: Noogram. Claim 'proved' ONLY for targets the kernel leg \
-established."""
+From synthesis.md, write a STATE-OF-THE-ART LaTeX article — LaTeX is MANDATORY \
+(v5), never markdown-only: paper/paper.tex (\\documentclass{article}, amsmath + \
+amsthm + hyperref; theorem / lemma / definition / proof environments, each \
+proof opening with an italic *Idea:* line) with citations via biblatex over \
+paper/references.bib, where every \\cite{key} traces to a source-ledger row. \
+Structure: abstract, intro + literature, setup, main results, computational \
+evidence, honest limitations, references. Compile with `latexmk -xelatex` and \
+deliver the built paper/paper.pdf next to paper.tex; record toolchain + compile \
+summary in paper/authoring-log.md. If no TeX toolchain is on PATH, still \
+deliver the complete paper.tex + references.bib and record the missing \
+toolchain honestly in authoring-log.md (the recipient compiles). Delivery \
+posture: ${params.delivery}. External attribution: Noogram. Claim 'proved' \
+ONLY for targets the kernel leg established. DELIVERY (v5): paper/ lives at \
+the GALAXY ROOT (git-tracked) — the tree copy is the published deliverable."""
 
 # --- 10b. citation-gate (v3.2, SPLIT GATE — POST-write citation audit) -----
 # The second half of the split seal: the citation audit runs HERE, over the paper
@@ -787,7 +840,10 @@ protocol) over the WRITTEN paper (write-paper produced it upstream) against \
 source-ledger.md and emit verification-report.md. FAIL-CLOSED: PASS only if the \
 audit shows zero unresolved L3 / fabricated citations and every paper citation \
 traces to a source-ledger row; else BLOCKED with the offending citations named. \
-Absent paper or absent ledger => BLOCKED, never PASS."""
+The paper is LaTeX (v5): audit paper/paper.tex + paper/references.bib. Absent \
+paper or absent ledger => BLOCKED, never PASS. DELIVERY (v5): also copy \
+verification-report.md to attack/verification-report.md at the GALAXY ROOT \
+(git-tracked)."""
 
 # --- 11. editorial-verdict (verifies paper + both gates, fail-closed) ------
 [[spore.node]]
@@ -805,7 +861,11 @@ citation-gate's verification-report shows every citation resolves; the skeptic's
 accepted findings are addressed; limitations are stated. Verdict SHIP or REWRITE \
 with reasons. FAIL-CLOSED: absent evidence-verdict OR absent verification-report \
 => REWRITE, never SHIP. Delivery posture ${params.delivery} is the operator's \
-call, not this gate's."""
+call, not this gate's. DELIVERY (v5): also copy editorial-verdict.md to \
+attack/editorial-verdict.md at the GALAXY ROOT (git-tracked), and VERIFY the \
+tracked-delivery contract held: attack/, paper/ (paper.tex + references.bib, \
+pdf if a toolchain was present), and trace/ exist at the galaxy root — a \
+missing tracked deliverable is a REWRITE reason."""
 
 # --- 12. chronicle (mycelium fold) ----------------------------------------
 [[spore.node]]
