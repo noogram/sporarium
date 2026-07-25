@@ -277,8 +277,8 @@ description = "Instrumentation gate. Empty (default) => off, nothing germinates.
 
 # --------------------------------------------------------------------------
 # models — the recipient's model-access POSTURE (v3.1, addition 1). The per-node
-# model allocation travels as `model = ...` pins on the formula STEPS (fable-5 on
-# deep-reasoning legs, opus-4-8 on build/writing legs, sonnet-5 on the mechanical
+# model allocation travels as `model = ...` pins on the formula STEPS (opus-5 on
+# deep-reasoning legs, opus-5 on build/writing legs, sonnet-5 on the mechanical
 # legs — see README "Model access"). Those pins are baked into the shipped formula
 # files; a spore PARAM cannot rewrite a formula file at germination, so this param
 # does NOT mechanically strip the pins. It records posture, and the README maps
@@ -298,7 +298,7 @@ description = "Instrumentation gate. Empty (default) => off, nothing germinates.
 type        = "enum"
 values      = ["full", "single"]
 default     = "full"
-description = "Model-access posture. full (default) => recipient has fable-5/opus-4-8/sonnet-5, step pins apply as-is. single => recipient has one model and sets a global ANTHROPIC_MODEL / cs tackle --model override (ranks above every pin). Advisory: the value does not rewrite pins; see README 'Model access'."
+description = "Model-access posture. full (default) => recipient has opus-5/sonnet-5, step pins apply as-is. single => recipient has one model and sets a global ANTHROPIC_MODEL / cs tackle --model override (ranks above every pin). Advisory: the value does not rewrite pins; see README 'Model access'."
 
 [spore.params.delivery]
 type        = "enum"
@@ -311,7 +311,7 @@ description = "Delivery posture for the resulting paper. Default private."
 # is the FULL lane (16 fixed nodes + fan-outs, three model tiers, the Lean
 # branch, the 16-role fleet). The RECOMMENDED first run is the STARTER lane, a
 # separate manifest (spore-starter.toml): 4 nodes
-# (decompose -> proof-attempt -> skeptic -> trace), ONE model (claude-opus-4-8),
+# (decompose -> proof-attempt -> skeptic -> trace), ONE model (claude-opus-5),
 # concurrency 1, no Lean / JVM / Zotero. Start there, inspect the trace, then
 # promote to this full lane.
 #
@@ -373,12 +373,12 @@ deterministic = false
 # "Model access" for the full table + the override / degradation story.
 [spore.formulas.task-work-reasoning]
 path          = "formulas/task-work-reasoning.formula.toml"
-description   = "task-work pinned to claude-fable-5 (deep-reasoning tier): proof attempts, skeptic, red-team, decompose."
+description   = "task-work pinned to claude-opus-5 (deep-reasoning tier): proof attempts, skeptic, red-team, decompose."
 deterministic = false
 
 [spore.formulas.task-work-build]
 path          = "formulas/task-work-build.formula.toml"
-description   = "task-work pinned to claude-opus-4-8 (build/writing tier): notebooks, lean legs, ledger, cards, synthesize."
+description   = "task-work pinned to claude-opus-5 (build/writing tier): notebooks, lean legs, ledger, cards, synthesize."
 deterministic = false
 
 [spore.formulas.task-work-mechanical]
@@ -388,7 +388,7 @@ deterministic = false
 
 [spore.formulas.deep-think-inline]
 path          = "formulas/deep-think-inline.formula.toml"
-description   = "Tier-0 multi-persona deliberation (claude-fable-5) — the frame-deliberation stress-test (lifted)."
+description   = "Tier-0 multi-persona deliberation (claude-opus-5) — the frame-deliberation stress-test (lifted)."
 deterministic = false
 
 [spore.formulas.citation-audit]
@@ -398,12 +398,12 @@ deterministic = false
 
 [spore.formulas.editorial-work]
 path          = "formulas/editorial-work.formula.toml"
-description   = "Prose-authoring formula (claude-opus-4-8) — write-paper binds here instead of task-work (lifted)."
+description   = "Prose-authoring formula (claude-opus-5) — write-paper binds here instead of task-work (lifted)."
 deterministic = false
 
 [spore.formulas.temp-review]
 path          = "formulas/temp-review.formula.toml"
-description   = "Review-as-formula (claude-fable-5) — editorial-verdict's fail-closed, author!=scorer editorial review (see README)."
+description   = "Review-as-formula (claude-opus-5) — editorial-verdict's fail-closed, author!=scorer editorial review (see README)."
 deterministic = false
 
 # --- v4: the ONE net-new formula (a formula, not a format primitive) ------
@@ -442,7 +442,7 @@ deterministic = false
 [[spore.node]]
 id          = "decompose"
 kind        = "fixed"
-formula     = "task-work-reasoning"    # fable-5: deep decomposition
+formula     = "task-work-reasoning"    # opus-5: deep decomposition
 description = "Restate the conjecture formally, build the proof-obligation tree, enumerate strategies + falsifiability tests."
 [spore.node.vars]
 crew_role = "concept-writer"
@@ -502,7 +502,7 @@ not only under .cosmon/state/."""
 [[spore.node]]
 id          = "frame-deliberation"
 kind        = "fixed"
-formula     = "deep-think-inline"      # fable-5: the deliberation panel
+formula     = "deep-think-inline"      # opus-5: the deliberation panel
 description = "Multi-persona panel stress-testing the decomposition + falsifiability tests before downstream compute. Recommends adjustments; never nucleates."
 [spore.node.vars]
 crew_role = "skeptic"
@@ -562,7 +562,7 @@ concept-cards/ to attack/concept-cards/ at the GALAXY ROOT (git-tracked)."""
 id          = "proof-attempt"
 kind        = "fanout"
 for_each    = "${params.subquestions}"
-formula     = "task-work-reasoning"    # fable-5: the proof attempt
+formula     = "task-work-reasoning"    # opus-5: the proof attempt
 description = "Attack one target: prove or refute in full rigor. Never asserts the conjecture — 'proved' is the kernel's word, downstream."
 [spore.node.vars]
 crew_role = "proofsmith"
@@ -583,7 +583,7 @@ ROOT (git-tracked)."""
 id          = "notebooks"
 kind        = "fanout"
 for_each    = "${params.subquestions}"
-formula     = "task-work-build"        # opus-4-8: building notebooks
+formula     = "task-work-build"        # opus-5: building notebooks
 description = "Computational stress-test of one target: numeric/symbolic experiments, small-case checks, counterexample search."
 [spore.node.vars]
 crew_role = "coder"
@@ -601,7 +601,7 @@ attack/notebook-${index}/ at the GALAXY ROOT (git-tracked)."""
 [[spore.node]]
 id          = "skeptic"
 kind        = "fixed"
-formula     = "task-work-reasoning"    # fable-5: adversarial review
+formula     = "task-work-reasoning"    # opus-5: adversarial review
 description = "Adversarial review of all attempts + notebooks. faults.md with BLOCKER/MAJOR/MINOR; a non-empty BLOCKER set blocks the seal."
 [spore.node.vars]
 crew_role = "skeptic"
@@ -622,7 +622,7 @@ the GALAXY ROOT (git-tracked)."""
 [[spore.node]]
 id          = "lean-skeleton"
 kind        = "fixed"
-formula     = "task-work-build"        # opus-4-8: careful transcription
+formula     = "task-work-build"        # opus-5: careful transcription
 description = "Transcribe the target theorem(s) as 'theorem … := by sorry', forking from concept-cards in parallel with the informal branch. The statement is the fidelity anchor; pinning it early prevents drift while the informal proof is written; a wrong statement voids every downstream proof."
 [spore.node.vars]
 crew_role = "kernel-engineer"
@@ -642,7 +642,7 @@ DELIVERY (v5): lean/ (or attack/skeleton.md) lives at the GALAXY ROOT \
 [[spore.node]]
 id          = "lean-probe"
 kind        = "fixed"
-formula     = "task-work-build"        # opus-4-8: discharge the sorries
+formula     = "task-work-build"        # opus-5: discharge the sorries
 description = "Discharge the sorries with real proof terms and run `lake build`. PROVED (exit 0, no sorry/axiom) or UNPROVABLE_IN_BUDGET — never 'false'."
 [spore.node.vars]
 crew_role = "probe-engineer"
@@ -662,7 +662,7 @@ attack/lean-probe-report.md."""
 [[spore.node]]
 id          = "red-team-corpus"
 kind        = "fixed"
-formula     = "task-work-reasoning"    # fable-5: adversarial corpus
+formula     = "task-work-reasoning"    # opus-5: adversarial corpus
 description = "Author >= adversarial_corpus_min FALSE statements the kernel MUST reject — near-misses, dropped hypotheses, typing cheats."
 [spore.node.vars]
 crew_role = "red-team-mathematician"
@@ -774,7 +774,7 @@ copy evidence-verdict.md to attack/evidence-verdict.md at the GALAXY ROOT \
 [[spore.node]]
 id          = "synthesize"
 kind        = "fixed"
-formula     = "task-work-build"        # opus-4-8: fold the legs
+formula     = "task-work-build"        # opus-5: fold the legs
 description = "Fold every leg into synthesis.md: proved / refuted / open, at what confidence, evidence-gate status stated honestly."
 [spore.node.vars]
 crew_role = "synthesizer"
@@ -799,7 +799,7 @@ attack/synthesis.md at the GALAXY ROOT (git-tracked)."""
 [[spore.node]]
 id          = "write-paper"
 kind        = "fixed"
-formula     = "editorial-work"         # opus-4-8: editorial parity (addition 4)
+formula     = "editorial-work"         # opus-5: editorial parity (addition 4)
 description = "Write a state-of-the-art LaTeX article (v5: LaTeX mandatory — paper.tex + references.bib + compiled paper.pdf under tracked paper/) from the synthesis; every citation traces to a source-ledger row. External attribution: Noogram."
 [spore.node.vars]
 crew_role = "writer"
@@ -849,7 +849,7 @@ verification-report.md to attack/verification-report.md at the GALAXY ROOT \
 [[spore.node]]
 id          = "editorial-verdict"
 kind        = "fixed"
-formula     = "temp-review"            # fable-5: review-as-formula (addition 3)
+formula     = "temp-review"            # opus-5: review-as-formula (addition 3)
 description = "Independent fail-closed verdict: paper claims match the evidence-gate, citations cleared by citation-gate, skeptic findings addressed. SHIP or REWRITE."
 [spore.node.vars]
 crew_role = "reviewer"

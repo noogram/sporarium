@@ -3,7 +3,7 @@
 #
 # WHAT IT IS
 #   The recommended FIRST run of math-attack. A deliberately tiny polymer: FOUR
-#   nodes, ONE model (claude-opus-4-8), concurrency 1, NO Lean / JVM / Zotero /
+#   nodes, ONE model (claude-opus-5), concurrency 1, NO Lean / JVM / Zotero /
 #   deliberation panel / instrumentation. Its whole job is to get a recipient one
 #   inspectable, hashed artifact — a decomposition, one attack, one skeptical
 #   review, and a final trace — before they authorize the full lane
@@ -23,7 +23,7 @@
 #   4-node DAG and its OWN seal (spore_starter.tla + spore_starter.cfg). The
 #   `profile` param on the full spore.toml records the posture and points here.
 #
-# MODEL: every node binds task-work-build (claude-opus-4-8) — ONE tier, so a
+# MODEL: every node binds task-work-build (claude-opus-5) — ONE tier, so a
 #   recipient with a single model runs the starter lane with no override at all.
 #   This is the mechanically-effective single-model default (see README §6).
 # ==========================================================================
@@ -83,12 +83,12 @@ concurrency_cap = 1
 isolation       = "worktree"
 
 # --------------------------------------------------------------------------
-# One formula tier only: task-work-build (claude-opus-4-8). Every node binds it,
+# One formula tier only: task-work-build (claude-opus-5). Every node binds it,
 # so the starter lane runs on a single model with no override needed.
 # --------------------------------------------------------------------------
 [spore.formulas.task-work-build]
 path          = "formulas/task-work-build.formula.toml"
-description   = "task-work pinned to claude-opus-4-8 — the single starter-lane model tier."
+description   = "task-work pinned to claude-opus-5 — the single starter-lane model tier."
 
 # ==========================================================================
 # The DAG — a linear 4-node chain (decompose -> proof-attempt -> skeptic -> trace)

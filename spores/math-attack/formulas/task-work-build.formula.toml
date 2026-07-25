@@ -4,7 +4,7 @@ description = """
 Execute a concrete task on a BUILD / WRITING model pin.
 
 Identical in shape to `task-work` (implement -> verify), but every step
-pins `model = "claude-opus-4-8"`. Bind the nodes whose value is careful
+pins `model = "claude-opus-5"`. Bind the nodes whose value is careful
 construction — building notebooks, discharging the Lean probe, the
 source ledger, the concept cards, the Lean skeleton, the synthesis — to
 this formula. The pin travels on the formula step (the only in-zip
@@ -37,7 +37,7 @@ id = "implement"
 title = "Implement the solution"
 description = "Do the work. Read the project's CLAUDE.md for conventions."
 acceptance = "Implementation complete, the leg's artifact emitted"
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely
@@ -56,7 +56,7 @@ report the exit status honestly. Fix any issues.
 """
 needs = ["implement"]
 acceptance = "Artifact verified against its brief; build/test (if code) reported honestly"
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely

@@ -12,7 +12,7 @@ the two steps mirror implement/verify, but the acceptance is editorial
 worker's verification is reading-based: does the artifact say what the
 brief asked, is it internally consistent, does every citation resolve?
 
-Model pin: every step pins `model = "claude-opus-4-8"` — the writing
+Model pin: every step pins `model = "claude-opus-5"` — the writing
 tier. Override with `cs tackle --model` / `ANTHROPIC_MODEL` (both rank
 above the pin). See README "Model & adapter access".
 """
@@ -38,7 +38,7 @@ synthesis.md). Exit criteria (all must hold):
   - It claims 'proved' ONLY for targets the kernel leg established.
 """
 acceptance = "Artifact produced, internally consistent, every citation traces to a ledger row, all brief points addressed or flagged, no 'proved' beyond the kernel leg"
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely
@@ -65,7 +65,7 @@ unresolved issue remains.
 """
 needs = ["draft"]
 acceptance = "Artifact reviewed for coherence, completeness, and compliance; all issues resolved or explicitly deferred with justification"
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely

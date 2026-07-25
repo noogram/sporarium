@@ -27,7 +27,7 @@ spore DAG enforces the separation by construction: same discipline holds
 at the other gates — `skeptic` (separate from proof-attempt) and the
 split `evidence-gate` / `citation-gate` (separate from synthesize/write-paper).
 
-Model pin: every step pins `model = "claude-fable-5"` — an adversarial
+Model pin: every step pins `model = "claude-opus-5"` — an adversarial
 review is a deep-reasoning step. Override with `cs tackle --model` /
 `ANTHROPIC_MODEL` (both rank above the pin). See README "Model & adapter access".
 
@@ -72,7 +72,7 @@ proceed — record that and carry a REWRITE verdict forward. Absent
 evidence is never a pass.
 """
 acceptance = "MOLECULE_DIR/claims-ledger.md written: every claim and citation the paper makes, each with its purported support. Absent paper => recorded as REWRITE."
-model = "claude-fable-5"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely
@@ -106,7 +106,7 @@ make.
 """
 needs = ["map"]
 acceptance = "Every claims-ledger.md row tagged CONFIRMED / OVERCLAIM / UNSUPPORTED-CITATION / UNADDRESSED-FAULT with evidence. No edits made to the paper itself."
-model = "claude-fable-5"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely
@@ -136,7 +136,7 @@ not this gate's.
 """
 needs = ["adversarial-verify"]
 acceptance = "MOLECULE_DIR/editorial-verdict.md written: per-claim verdict table + overall SHIP/REWRITE + a non-empty DISSENT section. SHIP only when zero OVERCLAIM/UNSUPPORTED/UNADDRESSED, evidence-gate is PASS/DEGRADED, and citation-gate report is PASS; absent evidence => REWRITE. Missing dissent section BLOCKS promotion."
-model = "claude-fable-5"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely

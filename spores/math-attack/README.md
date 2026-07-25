@@ -103,7 +103,7 @@ independently of whether the DAG completed.
 ## 1. Quickstart — the STARTER lane (do this first)
 
 Your first run should be the **starter lane**: 4 nodes, one model
-(`claude-opus-4-8`), concurrency 1, no Lean / JVM / Zotero. It gets you one
+(`claude-opus-5`), concurrency 1, no Lean / JVM / Zotero. It gets you one
 inspectable, hashed attack trace before you commit to the full lane (16 fixed
 nodes, 18 molecules at the default fan-out).
 
@@ -577,7 +577,7 @@ the typical mission; it costs nothing to have.
 There are **two independent axes**, and confusing them is the single most common
 way a first run surprises you:
 
-- **`model`** — *which model* answers. `claude-fable-5`, `claude-opus-4-8`, …
+- **`model`** — *which model* answers. `claude-opus-5`, `claude-opus-5`, …
 - **`adapter`** — *which runtime* asks it. `claude` (the Claude Code CLI in a
   tmux pane), `codex` (the OpenAI Codex CLI, likewise), `openai` / `anthropic`
   (in-process HTTP), `local` / `ollama` (in-process, operator-run weights), and
@@ -592,7 +592,7 @@ nucleation.
 > falls through to the built-in `local` adapter — an Ollama-backed in-process
 > loop. That is deliberate (a paid dispatch is never inadvertent), but it means
 > **this spore's `claude-*` model pins are meaningless until you choose the
-> `claude` adapter**: a `claude-fable-5` id handed to `local` is an invalid
+> `claude` adapter**: a `claude-opus-5` id handed to `local` is an invalid
 > `(adapter, model)` pair. Do this once, before the quickstart:
 >
 > ```sh
@@ -608,8 +608,8 @@ Each full-lane node then runs on a model matched to its cognitive load.
 
 | Tier | Model | Nodes |
 |------|-------|-------|
-| **Deep reasoning** | `claude-fable-5` | decompose, frame-deliberation, proof-attempt, skeptic, red-team-corpus, editorial-verdict, re-attack (loop step) |
-| **Build / writing** | `claude-opus-4-8` | source-ledger, concept-cards, lean-skeleton, notebooks, lean-probe, synthesize, write-paper |
+| **Deep reasoning** | `claude-opus-5` | decompose, frame-deliberation, proof-attempt, skeptic, red-team-corpus, editorial-verdict, re-attack (loop step) |
+| **Build / writing** | `claude-opus-5` | source-ledger, concept-cards, lean-skeleton, notebooks, lean-probe, synthesize, write-paper |
 | **Mechanical / observer** | `claude-sonnet-5` | trace, evidence-gate, chronicle, collector, dataviz, narrator |
 | **Citation** | `claude-sonnet-5` | citation-gate |
 
@@ -618,11 +618,11 @@ Each full-lane node then runs on a model matched to its cognitive load.
 The premortem (a pre-mortem review of v3 — "imagine this shipped and failed;
 list why") asked for portable single-model execution to be the *mechanically
 effective* default. That ask is met by the **starter lane**: every starter node binds
-one formula (`task-work-build`, `claude-opus-4-8`), so a recipient with a single
+one formula (`task-work-build`, `claude-opus-5`), so a recipient with a single
 model runs it with **no model override at all**. Start there.
 
 (That covers the *model* axis only. The *adapter* axis still needs the one-time
-choice in the box above — otherwise the starter lane's `claude-opus-4-8` pin is
+choice in the box above — otherwise the starter lane's `claude-opus-5` pin is
 handed to the `local` floor, which is not a legal pair. One `export`, once.)
 
 ### On the full lane, `models=single` is posture + a global override
@@ -634,9 +634,9 @@ so `models=single` is a **posture declaration**, and the effective
 override is global:
 
 ```sh
-COSMON_DEFAULT_MODEL=claude-opus-4-8 cs run --resident --poll-interval 10   # ranks above every pin
+COSMON_DEFAULT_MODEL=claude-opus-5 cs run --resident --poll-interval 10   # ranks above every pin
 # ($ANTHROPIC_MODEL is the legacy spelling of the same hammer and still works)
-# or per molecule:  cs tackle <molecule-id> --model claude-opus-4-8
+# or per molecule:  cs tackle <molecule-id> --model claude-opus-5
 ```
 
 That a param cannot mechanically strip full-lane pins is a **missing spore
@@ -702,7 +702,7 @@ for line in sys.stdin:
 > **Read one caveat into that output.** The snippet reports the *first* pin in
 > each formula file, so a formula whose steps span tiers is under-reported:
 > `converge-math-attack` prints `claude-sonnet-5` (its `preflight` step) while
-> its actual re-attack step is pinned `claude-fable-5`, as the tier table above
+> its actual re-attack step is pinned `claude-opus-5`, as the tier table above
 > says. Nodes on single-tier formulas — all the others — are exact. Commented
 > pins deliberately read as *no pin*, which is what they are.
 
@@ -820,7 +820,7 @@ disk afterwards.
 Uncomment the shipped lines. Every step of every formula carries this block:
 
 ```toml
-model = "claude-fable-5"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely
@@ -1142,12 +1142,12 @@ math-attack/
                                      pin — the cross-provider opt-in of §6bis
     task-work.formula.toml            generic agentic base (reference; no node binds it)
                                       — the only formula pinning NEITHER axis
-    task-work-reasoning.formula.toml  base + claude-fable-5   (proof/skeptic/red-team/decompose)
-    task-work-build.formula.toml      base + claude-opus-4-8  (notebooks/lean/ledger/cards/synth; the starter tier)
+    task-work-reasoning.formula.toml  base + claude-opus-5   (proof/skeptic/red-team/decompose)
+    task-work-build.formula.toml      base + claude-opus-5  (notebooks/lean/ledger/cards/synth; the starter tier)
     task-work-mechanical.formula.toml base + claude-sonnet-5  (trace/evidence-gate/instrumentation)
-    deep-think-inline.formula.toml    the frame-deliberation panel (claude-fable-5; lifted)
-    editorial-work.formula.toml       write-paper authoring        (claude-opus-4-8; lifted)
-    temp-review.formula.toml          editorial-verdict review     (claude-fable-5; review-as-formula)
+    deep-think-inline.formula.toml    the frame-deliberation panel (claude-opus-5; lifted)
+    editorial-work.formula.toml       write-paper authoring        (claude-opus-5; lifted)
+    temp-review.formula.toml          editorial-verdict review     (claude-opus-5; review-as-formula)
     citation-audit.formula.toml       the citation-gate leg        (claude-sonnet-5; lifted)
     mycelium.formula.toml             the chronicle fold           (claude-sonnet-5; lifted)
     converge-math-attack.formula.toml the v4 re-attack loop body   (composes the shipped `while`)

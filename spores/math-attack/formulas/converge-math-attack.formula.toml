@@ -321,7 +321,7 @@ MANDATORY (same discipline as `while`):
 """
 needs = ["init-ledger"]
 acceptance = "MOLECULE_DIR/rounds.md records every round with its attempt/probe/skeptic ids, the kernel verdict, the skeptic verdict, and the converged? flag. The loop exited EARLY the moment kernel PROVED and skeptic clean held in one round, or ran to ${rounds} and recorded exhaustion (never a silent pass). Each non-converged round nucleated proof-attempt x |subquestions| + lean-probe + skeptic FORWARD (--decayed-from, --blocked-by), strictly acyclic. A missing or malformed verdict was treated as NOT converged. lean-skeleton and red-team-corpus were never re-opened. Every round K wrote only under attack-round-K/."
-model = "claude-fable-5"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely
@@ -375,7 +375,7 @@ not help), and — if BLOCKED — the exact findings for the human escalation.
 """
 needs = ["loop-until-proved-and-clean"]
 acceptance = "MOLECULE_DIR/reattack-verdict.json written with verdict / rounds_run / rounds_target / exit_reason / final_round (including the artifacts map the evidence-gate reads) / history. PROVED_CLEAN only when the kernel proved AND the skeptic was clean in the SAME round within the target; exhaustion is BLOCKED with a named escalation, never a silent pass. synthesis.md carries the round-by-round trajectory and says honestly whether the unproved list shrank or churned."
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 # CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
 # uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
 # is not legal for the `codex` adapter, and cosmon carries the id opaquely
