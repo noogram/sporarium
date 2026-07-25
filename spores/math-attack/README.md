@@ -455,12 +455,24 @@ stands):
   reports, verdicts, synthesis), `paper/` (tex + bib + pdf + authoring log),
   `lean/`, `corpus/`, `trace/`, `report/` (observability), `docs/lore/`
   (chronicle).
-- **Never into the shared main checkout.** A worker runs in a git worktree. If
-  it writes a deliverable straight into the main checkout instead, that file is
-  untracked there, and `cs done` aborts the merge — *"the following untracked
-  working tree files would be overwritten by merge"* — with the resident runtime
-  retrying the same failure in a tight loop and the whole DAG stalled behind it.
-  This is the one way tracked delivery bites; the briefs say it explicitly.
+- **Relative paths only — never the shared main checkout.** A worker runs in a
+  git worktree. If it writes a deliverable into the main checkout instead, that
+  file is untracked there and `cs done` aborts the merge — *"the following
+  untracked working tree files would be overwritten by merge"* — after which the
+  resident runtime retries that deterministic failure in a tight loop and the
+  whole DAG stalls behind it.
+
+  This is worth explaining rather than just forbidding, because the first fix
+  failed. Renaming the destination from "the galaxy root" to "your worktree" did
+  **not** stop it: the brief also hands the worker an *absolute* `output_dir`
+  under `.cosmon/state/`, and a model holding one authoritative absolute path
+  resolves "the galaxy" against it — landing in the main checkout. v5.2 removes
+  the ambiguity at its source instead of renaming it: deliverable paths are
+  **relative to the working directory**, absolute paths to deliverables are
+  forbidden outright, and each producing node confirms with `git status --short`
+  that its artifact is committed in its own worktree before finishing. A rule
+  nobody checks is decoration — the same reason the model-pin section ships a
+  verification command rather than a promise.
 - The molecule-state copy remains the gates' working substrate; re-attack loop
   internals (`attack-round-K/`) may stay there, with `rounds.md`, the verdict
   and the **final** round promoted to `attack/re-attack/`.
