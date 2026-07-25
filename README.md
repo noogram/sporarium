@@ -23,6 +23,7 @@ flowchart LR
 | Spore | What it does | Status |
 |---|---|---|
 | [`spores/math-attack/`](spores/math-attack/) | Attack a hard mathematical conjecture with a proof/refutation pipeline: decomposition, parallel informal + formal (Lean 4) branches, adversarial review, fail-closed gates, and a machine-checked seal. Start with the 4-node `starter` profile; scale to the full 15 fixed node types (20 with fan-out types; 17 molecules at the default fan-out), 16-agent crew. | **Experimental** — germination-tested, not yet multi-day-run-tested |
+| [`spores/math-attack-multi-model/`](spores/math-attack-multi-model/) | The two-provider variant: the problem is framed **twice, blind, on different providers**, each provider cross-examines the other's framing, and the merge labels every result `independent-convergence` / `A-only` / `B-only` / `disputed` without ever resolving a dispute by vote. The blinding is a **seal property checked by TLC**, not a rule in a prompt — wiring one branch downstream of the other is a violation, not a judgement call. | **Experimental** — sealed (6 properties, 2 negative tests), not yet run end-to-end |
 
 Each spore's README is its quickstart: prerequisites, `cs spore validate` (a dry run that germinates nothing), then `cs spore run`.
 

@@ -1,0 +1,65 @@
+formula = "task-work-build"
+version = 1
+description = """
+Execute a concrete task on a BUILD / WRITING model pin.
+
+Identical in shape to `task-work` (implement -> verify), but every step
+pins `model = "claude-opus-5"`. Bind the nodes whose value is careful
+construction — building notebooks, discharging the Lean probe, the
+source ledger, the concept cards, the Lean skeleton, the synthesis — to
+this formula. The pin travels on the formula step (the only in-zip
+per-node model channel; see `task-work-reasoning` for the mechanism and
+the override path).
+
+GRACEFUL DEGRADATION: the pin is inert until tackle; override with
+`cs tackle <id> --model <m>` or `ANTHROPIC_MODEL=<m>` (both rank above
+the pin). See README "Model & adapter access".
+
+THE ADAPTER AXIS (commented on both steps below). This is also the STARTER
+lane's single formula: all four starter nodes bind it. So uncommenting
+`adapter = "codex"` here — and commenting out the two `model` pins — ports
+the ENTIRE starter lane to the Codex CLI in one edit, which is the shortest
+path for a recipient who has Codex and no Claude Code. It is a single-
+provider port, not a clean room (the starter lane's scorer shares the
+formula with its author); for the clean-room split see README §6bis.
+"""
+id_prefix = "task"
+
+[vars.topic]
+description = "The concrete task to execute, stated in one or more sentences."
+required = true
+
+[tier]
+level = 0
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+description = "Do the work. Read the project's CLAUDE.md for conventions."
+acceptance = "Implementation complete, the leg's artifact emitted"
+model = "claude-opus-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
+
+[[steps]]
+id = "verify"
+title = "Verify and validate"
+description = """
+Verify the leg's artifact against its brief: internally consistent, every
+claim justified or flagged as a gap, sources cited where applicable. If
+the leg emitted code (notebooks, Lean), run the relevant build/test and
+report the exit status honestly. Fix any issues.
+"""
+needs = ["implement"]
+acceptance = "Artifact verified against its brief; build/test (if code) reported honestly"
+model = "claude-opus-5"
+# CROSS-PROVIDER (README §6bis): to run THIS step on the OpenAI Codex CLI,
+# uncomment `adapter` AND comment out the `model` pin above — a `claude-*` id
+# is not legal for the `codex` adapter, and cosmon carries the id opaquely
+# (the backend rejects the bad pair only at launch). With no model pin, the
+# Codex CLI's own default applies.
+# adapter = "codex"
