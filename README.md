@@ -29,7 +29,7 @@ Each spore's README is its quickstart: prerequisites, `cs spore validate` (a dry
 
 ## What a spore actually produced
 
-[**Firoozbakht: a solo strong model against a clean-room fleet**](docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.md) — `math-attack` was run twice on an open conjecture in number theory, and the result is compared against the same problem handed to a single strong model working alone for four minutes.
+[**Firoozbakht: a solo strong model against a clean-room fleet**](docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.en.md) *(also in [French](docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.md))* — `math-attack` was run twice on an open conjecture in number theory, and the result is compared against the same problem handed to a single strong model working alone for four minutes.
 
 The honest finding is that the solo model recovered the mathematical core of the problem with remarkable density, and the fleet recovered it independently — then turned it into something the solo run could not: formal equivalences a kernel checks, reproducible computations, dead routes with obituaries, an audited bibliography, and standing objections. Neither settles the conjecture. The claim worth making is not that a fleet is smarter; it is that a fleet makes a good model's intuition **cumulative**.
 

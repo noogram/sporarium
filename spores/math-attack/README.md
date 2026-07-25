@@ -12,7 +12,7 @@ A **spore** is a fill-in-the-blanks template of a *whole* cosmon polymer: a flee
 
 ---
 
-> **What this spore produced when it was actually run:** [*Firoozbakht — a solo strong model against a clean-room fleet*](../../docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.md). Two full-lane runs on an open conjecture, compared against the same problem given to one strong model working alone. Both published: [`firoozbakht-cleanroom`](https://github.com/noogram-labs/firoozbakht-cleanroom) (independent) and [`firoozbakht`](https://github.com/noogram-labs/firoozbakht) (first run, workspace contaminated mid-flight — kept and documented). Read it before deciding whether this spore is worth your budget: it says plainly what the fleet added over the solo run, and what it did not.
+> **What this spore produced when it was actually run:** [*Firoozbakht — a solo strong model against a clean-room fleet*](../../docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.en.md). Two full-lane runs on an open conjecture, compared against the same problem given to one strong model working alone. Both published: [`firoozbakht-cleanroom`](https://github.com/noogram-labs/firoozbakht-cleanroom) (independent) and [`firoozbakht`](https://github.com/noogram-labs/firoozbakht) (first run, workspace contaminated mid-flight — kept and documented). Read it before deciding whether this spore is worth your budget: it says plainly what the fleet added over the solo run, and what it did not.
 
 ## 0. Status — read this first
 

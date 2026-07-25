@@ -6,7 +6,7 @@ A variant of [`math-attack`](../math-attack/) that frames the problem **twice, i
 
 ## Why this exists
 
-[The comparative study](../../docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.md) that motivated this spore ran a fleet and a single strong model against the same open conjecture. Both recovered the same mathematical core independently, which was the most informative result in the whole exercise — and it was visible only *because* the two runs had not read each other.
+[The comparative study](../../docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.en.md) that motivated this spore ran a fleet and a single strong model against the same open conjecture. Both recovered the same mathematical core independently, which was the most informative result in the whole exercise — and it was visible only *because* the two runs had not read each other.
 
 That study's own recommendation was to build the independence into the pipeline instead of reconstructing it after the fact. This is that pipeline.
 
