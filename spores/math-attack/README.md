@@ -1,60 +1,24 @@
 # `math-attack` — a shareable spore for attacking a hard conjecture
 
-A **spore** is a fill-in-the-blanks template of a *whole* cosmon polymer: a
-fleet, a set of per-node formulas, a parameter schema, and a DAG of typed
-edges. You supply a conjecture, run one command, and cosmon germinates a full
-proof/refutation pipeline whose central invariant is simple:
+A **spore** is a fill-in-the-blanks template of a *whole* cosmon polymer: a fleet, a set of per-node formulas, a parameter schema, and a DAG of typed edges. You supply a conjecture, run one command, and cosmon germinates a full proof/refutation pipeline whose central invariant is simple:
 
-> **No target is ever called *proved* on an LLM's say-so.** A machine kernel
-> (Lean's `lake build`) authors the verdict; the LLM only proposes proof terms
-> and prose. This is the *LLM firewall*.
+> **No target is ever called *proved* on an LLM's say-so.** A machine kernel (Lean's `lake build`) authors the verdict; the LLM only proposes proof terms and prose. This is the *LLM firewall*.
 
-**New to cosmon vocabulary** (spore, polymer, molecule, germinate, fleet,
-formula, tackle)? Read the [glossary in §14](#14-glossary--cosmon-vocabulary--cs-commands)
-first — it defines every house term and every `cs` subcommand this README uses.
+**New to cosmon vocabulary** (spore, polymer, molecule, germinate, fleet, formula, tackle)? Read the [glossary in §14](#14-glossary--cosmon-vocabulary--cs-commands) first — it defines every house term and every `cs` subcommand this README uses.
 
-**A note on version numbers.** The manifests declare `version = 3` (and
-`cs spore validate` prints `(v3)`) — that is the spore-format *manifest* version.
-The prose calls this package **v4**: the iteration of the package's *content*
-(v3 → v3.1 → v3.2 → v4), independent of the manifest field. Both refer to the
-same files you are holding.
+**A note on version numbers.** The manifests declare `version = 3` (and `cs spore validate` prints `(v3)`) — that is the spore-format *manifest* version. The prose calls this package **v4**: the iteration of the package's *content* (v3 → v3.1 → v3.2 → v4), independent of the manifest field. Both refer to the same files you are holding.
 
-**What v4 adds.** One param (`rounds`), one node (`re-attack`), one formula
-(`converge-math-attack`) — a bounded **re-attack loop** that re-attacks the
-conjecture round after round, each round fed the previous round's faults and
-still-unproved list, stopping the moment the kernel proves it and the skeptic is
-clean. **Zero new spore-format primitives** (it reuses the shipped
-`emergent` + `[spore.node.bounds]` pair). At the default `rounds = 1` the loop
-germinates nothing and the graph is **exactly v3.2**. See
-[§5bis](#5bis-rounds--the-re-attack-loop-v4).
+**What v4 adds.** One param (`rounds`), one node (`re-attack`), one formula (`converge-math-attack`) — a bounded **re-attack loop** that re-attacks the conjecture round after round, each round fed the previous round's faults and still-unproved list, stopping the moment the kernel proves it and the skeptic is clean. **Zero new spore-format primitives** (it reuses the shipped `emergent` + `[spore.node.bounds]` pair). At the default `rounds = 1` the loop germinates nothing and the graph is **exactly v3.2**. See [§5bis](#5bis-rounds--the-re-attack-loop-v4).
 
 ---
 
-> **What this spore produced when it was actually run:**
-> [*Firoozbakht — a solo strong model against a clean-room fleet*](../../docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.md).
-> Two full-lane runs on an open conjecture, compared against the same problem
-> given to one strong model working alone. Both published:
-> [`firoozbakht-cleanroom`](https://github.com/noogram-labs/firoozbakht-cleanroom)
-> (independent) and [`firoozbakht`](https://github.com/noogram-labs/firoozbakht)
-> (first run, workspace contaminated mid-flight — kept and documented). Read it
-> before deciding whether this spore is worth your budget: it says plainly what
-> the fleet added over the solo run, and what it did not.
+> **What this spore produced when it was actually run:** [*Firoozbakht — a solo strong model against a clean-room fleet*](../../docs/reports/2026-07-25-firoozbakht-codex-cleanroom-comparison.md). Two full-lane runs on an open conjecture, compared against the same problem given to one strong model working alone. Both published: [`firoozbakht-cleanroom`](https://github.com/noogram-labs/firoozbakht-cleanroom) (independent) and [`firoozbakht`](https://github.com/noogram-labs/firoozbakht) (first run, workspace contaminated mid-flight — kept and documented). Read it before deciding whether this spore is worth your budget: it says plainly what the fleet added over the solo run, and what it did not.
 
 ## 0. Status — read this first
 
-> ⚠️ **EXPERIMENTAL — germination-tested, NOT multi-day-run-tested.**
-> This package has been proven to *expand, seal, and germinate* correctly
-> (verified on the acceptance bench; the full report is available on request via
-> an issue at https://github.com/noogram/sporarium/issues).
-> It has **not** yet completed a real multi-day conjecture attack in an external
-> container. The claim "works out of the zip" is **frozen** until that container
-> run passes (see §9).
+> ⚠️ **EXPERIMENTAL — germination-tested, NOT multi-day-run-tested.** This package has been proven to *expand, seal, and germinate* correctly (verified on the acceptance bench; the full report is available on request via an issue at https://github.com/noogram/sporarium/issues). It has **not** yet completed a real multi-day conjecture attack in an external container. The claim "works out of the zip" is **frozen** until that container run passes (see §9).
 >
-> **v4 specifically:** the seal was re-checked green by TLC (including the
-> shipment-gate bound and eight non-vacuity probes — §10), and the manifest
-> validates and expands. The re-attack loop has **not** been germinated
-> end-to-end at `rounds ≥ 2`; that, plus the driver-capability check on the
-> recipient's `cs`, is the acceptance work still owed before any v4 parcel ships.
+> **v4 specifically:** the seal was re-checked green by TLC (including the shipment-gate bound and eight non-vacuity probes — §10), and the manifest validates and expands. The re-attack loop has **not** been germinated end-to-end at `rounds ≥ 2`; that, plus the driver-capability check on the recipient's `cs`, is the acceptance work still owed before any v4 parcel ships.
 
 **Tested environment (what the acceptance run actually exercised):**
 
@@ -66,56 +30,23 @@ germinates nothing and the graph is **exactly v3.2**. See
 | Java (for TLC) | OpenJDK 26.0.1 (Homebrew) |
 | TLC | `tla2tools.jar` — ships in the cosmon repo at `docs/specs/tla2tools.jar` (4.3 MB) |
 
-> **On the `cs` version.** The acceptance run used a development build of `cs`
-> (ahead of the published `v0.2.1` at the time of writing). Any `cs ≥ 0.2.1`
-> works: `validate` and germination work on any recent `cs`. The development
-> build matters only for the TLC seal-verify lane (see
-> [§2](#2-what-the-seal-certifies)) — a released `cs` reports `TLC unavailable`
-> there and you verify the proof yourself (see [§10](#10-verifying-the-seal-yourself)).
+> **On the `cs` version.** The acceptance run used a development build of `cs` (ahead of the published `v0.2.1` at the time of writing). Any `cs ≥ 0.2.1` works: `validate` and germination work on any recent `cs`. The development build matters only for the TLC seal-verify lane (see [§2](#2-what-the-seal-certifies)) — a released `cs` reports `TLC unavailable` there and you verify the proof yourself (see [§10](#10-verifying-the-seal-yourself)).
 
-**Untested paths (be honest with yourself before relying on these):**
-a real end-to-end attack on a live conjecture; Linux/arm64 in a Docker sandbox;
-the pinned models being *reachable* on your account; worker death + recovery
-over a multi-day run; **the cross-provider clean-room lane of
-[§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review)** — the
-`adapter = "codex"` pins ship commented and have not been run end-to-end here,
-so treat that path as documented-and-plausible, not as bench-verified. These
-are the subject of the follow-up container gate (§9).
+**Untested paths (be honest with yourself before relying on these):** a real end-to-end attack on a live conjecture; Linux/arm64 in a Docker sandbox; the pinned models being *reachable* on your account; worker death + recovery over a multi-day run; **the cross-provider clean-room lane of [§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review)** — the `adapter = "codex"` pins ship commented and have not been run end-to-end here, so treat that path as documented-and-plausible, not as bench-verified. These are the subject of the follow-up container gate (§9).
 
-**Seal scope in one line:** the TLC seal proves *abstract, bounded-DAG* gate +
-artifact-flow properties. It does **not** prove a worker can start, reach a
-model, or produce a non-empty artifact. Full boundary in [§2](#2-what-the-seal-certifies).
+**Seal scope in one line:** the TLC seal proves *abstract, bounded-DAG* gate + artifact-flow properties. It does **not** prove a worker can start, reach a model, or produce a non-empty artifact. Full boundary in [§2](#2-what-the-seal-certifies).
 
-**Trust — a spore's prompts drive YOUR workers.** A spore is not passive data: its
-formulas are the prompts cosmon feeds to LLM workers that hold tools (Bash, Edit,
-Write) in your environment. Running a spore therefore executes its author's
-instructions against your fleet — a supply-chain / prompt-injection surface. **The
-seal does not cover this**: `.tla` proves DAG topology, not prompt content, so a
-spore can be validly sealed and still carry a hostile instruction in a node's
-briefing. Only run a spore whose **author you trust**, ideally pinned to a **signed
-tag** whose bytes you can diff (`git checkout math-attack-v3.2`), and skim the node
-prompts before a first run the way you would read a script before `curl | sh`.
-(This package is first-party — `github.com/noogram` — but treat *any* spore, ours
-included, on that basis.)
+**Trust — a spore's prompts drive YOUR workers.** A spore is not passive data: its formulas are the prompts cosmon feeds to LLM workers that hold tools (Bash, Edit, Write) in your environment. Running a spore therefore executes its author's instructions against your fleet — a supply-chain / prompt-injection surface. **The seal does not cover this**: `.tla` proves DAG topology, not prompt content, so a spore can be validly sealed and still carry a hostile instruction in a node's briefing. Only run a spore whose **author you trust**, ideally pinned to a **signed tag** whose bytes you can diff (`git checkout math-attack-v3.2`), and skim the node prompts before a first run the way you would read a script before `curl | sh`. (This package is first-party — `github.com/noogram` — but treat *any* spore, ours included, on that basis.)
 
-**Expected shape / cost:** the **starter lane** (§1) is 4 molecules, one model,
-minutes. The **full lane** (§3) is **16 fixed nodes, 18 molecules at the default
-fan-out** (one subquestion → the two fan-out nodes germinate one instance each;
-more subquestions add two molecules apiece) across three model tiers — budget
-accordingly; there is **no built-in cost ceiling** (§9).
+**Expected shape / cost:** the **starter lane** (§1) is 4 molecules, one model, minutes. The **full lane** (§3) is **16 fixed nodes, 18 molecules at the default fan-out** (one subquestion → the two fan-out nodes germinate one instance each; more subquestions add two molecules apiece) across three model tiers — budget accordingly; there is **no built-in cost ceiling** (§9).
 
-**If the first run fails:** the always-on `trace/` sidecar (§8) is your
-diagnostic bundle — it records what ran, on what model, producing what bytes,
-independently of whether the DAG completed.
+**If the first run fails:** the always-on `trace/` sidecar (§8) is your diagnostic bundle — it records what ran, on what model, producing what bytes, independently of whether the DAG completed.
 
 ---
 
 ## 1. Quickstart — the STARTER lane (do this first)
 
-Your first run should be the **starter lane**: 4 nodes, one model
-(`claude-opus-5`), concurrency 1, no Lean / JVM / Zotero. It gets you one
-inspectable, hashed attack trace before you commit to the full lane (16 fixed
-nodes, 18 molecules at the default fan-out).
+Your first run should be the **starter lane**: 4 nodes, one model (`claude-opus-5`), concurrency 1, no Lean / JVM / Zotero. It gets you one inspectable, hashed attack trace before you commit to the full lane (16 fixed nodes, 18 molecules at the default fan-out).
 
 ```mermaid
 flowchart LR
@@ -136,34 +67,11 @@ flowchart LR
 
 **Prerequisites:**
 
-- You cloned `github.com/noogram/cosmon` and installed the CLI
-  (`cargo install --path crates/cosmon-cli --locked`, which installs to
-  `~/.cargo/bin`), so `cs` is on your `PATH`.
-  On Linux this build needs the OS packages **`pkg-config`** and
-  **`libdbus-1-dev`** (a known cosmon build dependency on Linux); install them
-  before `cargo install`.
-- Print your versions so a failure is diagnosable:
-  `cs --version` and (if you will drive workers) `claude --version`.
-- **Choose your adapter — one export, once.** cosmon's built-in floor is
-  `local` (Ollama), *not* Claude Code, so this spore's `claude-*` model pins
-  need the `claude` adapter named explicitly or they are handed to a runtime
-  that cannot serve them. Before the first `cs run`:
-  `export COSMON_DEFAULT_ADAPTER=claude` (or commit `[adapters] default =
-  "claude"` in the mission project's `.cosmon/config.toml`). Full story, and
-  the multi-provider variants, in [§6](#6-model--adapter-access).
-- **A TeX toolchain (full lane, v5).** `write-paper` mandates a compiled
-  state-of-the-art LaTeX article (`latexmk -xelatex` over
-  `paper/paper.tex` + biblatex). Install TeX Live / MacTeX so `latexmk` is on
-  `PATH`. Like Lean/Mathlib, this is a declared recipient dependency, and its
-  absence degrades honestly: the run still delivers `paper.tex` +
-  `references.bib` and records the missing toolchain in
-  `paper/authoring-log.md` — you compile.
-- **Install the spore's formulas into your mission project's registry**
-  (`cp "$SPORE"/formulas/*.formula.toml .cosmon/formulas/`). Germinated
-  molecules name their formula by id and `cs` resolves it against
-  `.cosmon/formulas/`, not against the spore directory — skip this and every
-  model pin is silently ignored. See the boxed warning in
-  [§6](#6-model--adapter-access) for how to verify it took.
+- You cloned `github.com/noogram/cosmon` and installed the CLI (`cargo install --path crates/cosmon-cli --locked`, which installs to `~/.cargo/bin`), so `cs` is on your `PATH`. On Linux this build needs the OS packages **`pkg-config`** and **`libdbus-1-dev`** (a known cosmon build dependency on Linux); install them before `cargo install`.
+- Print your versions so a failure is diagnosable: `cs --version` and (if you will drive workers) `claude --version`.
+- **Choose your adapter — one export, once.** cosmon's built-in floor is `local` (Ollama), *not* Claude Code, so this spore's `claude-*` model pins need the `claude` adapter named explicitly or they are handed to a runtime that cannot serve them. Before the first `cs run`: `export COSMON_DEFAULT_ADAPTER=claude` (or commit `[adapters] default = "claude"` in the mission project's `.cosmon/config.toml`). Full story, and the multi-provider variants, in [§6](#6-model--adapter-access).
+- **A TeX toolchain (full lane, v5).** `write-paper` mandates a compiled state-of-the-art LaTeX article (`latexmk -xelatex` over `paper/paper.tex` + biblatex). Install TeX Live / MacTeX so `latexmk` is on `PATH`. Like Lean/Mathlib, this is a declared recipient dependency, and its absence degrades honestly: the run still delivers `paper.tex` + `references.bib` and records the missing toolchain in `paper/authoring-log.md` — you compile.
+- **Install the spore's formulas into your mission project's registry** (`cp "$SPORE"/formulas/*.formula.toml .cosmon/formulas/`). Germinated molecules name their formula by id and `cs` resolves it against `.cosmon/formulas/`, not against the spore directory — skip this and every model pin is silently ignored. See the boxed warning in [§6](#6-model--adapter-access) for how to verify it took.
 
 **Step 1 — get the spore (a read-only template).**
 
@@ -172,10 +80,7 @@ git clone https://github.com/noogram/sporarium.git
 SPORE="$PWD/sporarium/spores/math-attack"      # remember this path
 ```
 
-Working from the repo means you can `git pull` fixes and
-[open issues](https://github.com/noogram/sporarium/issues) — please do.
-A tagged release (e.g. `math-attack-v3.2`) is the immutable alternative:
-`git checkout <tag>` pins the exact bytes of a shipped version.
+Working from the repo means you can `git pull` fixes and [open issues](https://github.com/noogram/sporarium/issues) — please do. A tagged release (e.g. `math-attack-v3.2`) is the immutable alternative: `git checkout <tag>` pins the exact bytes of a shipped version.
 
 **Step 2 — create a dedicated mission project, OUTSIDE the clone.**
 
@@ -184,27 +89,14 @@ mkdir firoozbakht-attack && cd firoozbakht-attack
 cs init                # creates ./.cosmon/ — this dir is now a cosmon project
 ```
 
-One mission project per attack. Everything the run produces — the molecules,
-the run-scoped output home, the artifacts — lands under this directory's
-`.cosmon/state/`. Deleting the directory discards the whole mission and leaves
-the spore clone untouched.
+One mission project per attack. Everything the run produces — the molecules, the run-scoped output home, the artifacts — lands under this directory's `.cosmon/state/`. Deleting the directory discards the whole mission and leaves the spore clone untouched.
 
-There are **two equally valid ways** to point a run at the spore from here;
-cosmon has no `install`/`import` verb (only `validate`/`run`/`export`), so
-"importing" a spore just means choosing one of these:
+There are **two equally valid ways** to point a run at the spore from here; cosmon has no `install`/`import` verb (only `validate`/`run`/`export`), so "importing" a spore just means choosing one of these:
 
-- **Reference the clone in place** (used by the commands below): keep the spore
-  in the clone and name it by `"$SPORE/…"`. Pro: `git pull` gets author-side
-  fixes. This is the default this quickstart shows.
-- **Import a copy into your project** (self-contained): `mkdir -p spores && cp -R
-  "$SPORE" spores/math-attack`, then run from your project root with
-  `cs spore run spores/math-attack/spore.toml …`. Pro: the mission and the exact
-  spore bytes travel together; re-copy to pick up fixes. Either way, **run from
-  the project root** (see the ADR-161 note below).
+- **Reference the clone in place** (used by the commands below): keep the spore in the clone and name it by `"$SPORE/…"`. Pro: `git pull` gets author-side fixes. This is the default this quickstart shows.
+- **Import a copy into your project** (self-contained): `mkdir -p spores && cp -R "$SPORE" spores/math-attack`, then run from your project root with `cs spore run spores/math-attack/spore.toml …`. Pro: the mission and the exact spore bytes travel together; re-copy to pick up fixes. Either way, **run from the project root** (see the ADR-161 note below).
 
-> ⚠️ **Two things to get right, or `cs spore run` refuses (cosmon ADR-161).**
-> The refusal looks like this, and it is a **refusal, not a crash** — nothing is
-> written and no molecule is created:
+> ⚠️ **Two things to get right, or `cs spore run` refuses (cosmon ADR-161).** The refusal looks like this, and it is a **refusal, not a crash** — nothing is written and no molecule is created:
 >
 > ```text
 > cs: node "decompose" would be handed a forbidden output home
@@ -212,24 +104,10 @@ cosmon has no `install`/`import` verb (only `validate`/`run`/`export`), so
 >     refusing to germinate (ADR-161)
 > ```
 >
-> 1. **Run `cs spore run` from your mission project root, not from inside the
->    spore directory.** From the project root, the spore reference works **either
->    way** — a relative path (`spores/math-attack/spore-starter.toml`) or an
->    absolute one both germinate. The refusal fires only when the current
->    directory is **inside the spore's own directory** and you name the spore by a
->    bare relative reference (`spore-starter.toml`): cosmon then resolves the
->    spore-definition boundary around your cwd and refuses, even though the output
->    home is your project's `.cosmon/`. Staying at the project root avoids it
->    entirely. (Verified on `cs 0.2.2`, build 94ba88c.)
-> 2. **Never `cs init` inside the spore directory or a copy of it.** That makes
->    the spore's own directory the cosmon project root, so the output home cosmon
->    hands each node genuinely lands inside the spore **definition** tree —
->    writing instances back into the reusable template. This refusal is the
->    invariant working as designed, and no flag overrides it.
+> 1. **Run `cs spore run` from your mission project root, not from inside the spore directory.** From the project root, the spore reference works **either way** — a relative path (`spores/math-attack/spore-starter.toml`) or an absolute one both germinate. The refusal fires only when the current directory is **inside the spore's own directory** and you name the spore by a bare relative reference (`spore-starter.toml`): cosmon then resolves the spore-definition boundary around your cwd and refuses, even though the output home is your project's `.cosmon/`. Staying at the project root avoids it entirely. (Verified on `cs 0.2.2`, build 94ba88c.)
+> 2. **Never `cs init` inside the spore directory or a copy of it.** That makes the spore's own directory the cosmon project root, so the output home cosmon hands each node genuinely lands inside the spore **definition** tree — writing instances back into the reusable template. This refusal is the invariant working as designed, and no flag overrides it.
 >
-> `cs spore validate` and `cs spore export` germinate nothing, so neither point
-> applies to them: both run fine from anywhere, including inside the spore
-> directory.
+> `cs spore validate` and `cs spore export` germinate nothing, so neither point applies to them: both run fine from anywhere, including inside the spore directory.
 
 **Step 3 — validate, then run the starter lane** (from the mission project):
 
@@ -251,33 +129,22 @@ cs spore run "$SPORE/spore-starter.toml" \
 # on a development-branch cs: drop the flag; it prints "seal: verified <hash>"
 ```
 
-Then drive the run — also from the mission project, since that is where the
-molecules live:
+Then drive the run — also from the mission project, since that is where the molecules live:
 
 ```sh
 cs status                                  # 4 alive
 cs run --resident --poll-interval 10
 ```
 
-The starter DAG is `decompose → proof-attempt → skeptic → trace`. There is **no
-kernel leg** here, so it never claims *proved* — it produces a candidate
-argument, a skeptical review, and a trace, and says so honestly. Inspect
-`trace/` and the three artifacts, then promote to the full lane (§3).
+The starter DAG is `decompose → proof-attempt → skeptic → trace`. There is **no kernel leg** here, so it never claims *proved* — it produces a candidate argument, a skeptical review, and a trace, and says so honestly. Inspect `trace/` and the three artifacts, then promote to the full lane (§3).
 
-The `profile` param on the full `spore.toml` records this posture (`profile`
-defaults to `starter` = "we recommend you start here"). Because a spore param
-cannot restructure a fixed-node DAG (a node's kind is fixed at parse time),
-the two lanes are **two manifests**, not one switch.
+The `profile` param on the full `spore.toml` records this posture (`profile` defaults to `starter` = "we recommend you start here"). Because a spore param cannot restructure a fixed-node DAG (a node's kind is fixed at parse time), the two lanes are **two manifests**, not one switch.
 
 ---
 
 ## 2. What the seal certifies
 
-This spore declares a `[spore.seal]` block naming **five properties (four
-safety invariants + one liveness property, Termination)**.
-They are **mechanically checked** by TLC over [`spore.tla`](spore.tla) +
-[`spore.cfg`](spore.cfg); `cs spore run` runs that proof before germinating and
-prints `seal: verified <hash>` (cached by `BLAKE3(spore.tla ‖ spore.cfg)`).
+This spore declares a `[spore.seal]` block naming **five properties (four safety invariants + one liveness property, Termination)**. They are **mechanically checked** by TLC over [`spore.tla`](spore.tla) + [`spore.cfg`](spore.cfg); `cs spore run` runs that proof before germinating and prints `seal: verified <hash>` (cached by `BLAKE3(spore.tla ‖ spore.cfg)`).
 
 | Property | What it proves |
 |----------|----------------|
@@ -287,35 +154,17 @@ prints `seal: verified <hash>` (cached by `BLAKE3(spore.tla ‖ spore.cfg)`).
 | `DeterministicParametrization` | The node set is a pure function of the params: `|Nodes| = 16 + 2·|subquestions| + 3·|observability|`. **`rounds` does not appear**: `re-attack` is *one* node whose emergent children are rounds, not extra nodes. |
 | `ArtifactFlow` *(v3.2)* | Every artifact a node **requires** has an upstream node that **produces** it. |
 
-**What the seal does NOT certify (accepted risk).** The model tracks only
-whether a mechanical *verdict is present* and what it says — never proof/prose
-**content** (Rice: the truth of a string is undecidable), never LLM agent
-semantics, never that a worker can **start**, that a pinned **model is
-reachable**, or that a completed node produced a **non-empty artifact**. A green
-seal means the *shape* of the attack is sound; it is not a promise that the
-attack *ran*. Runtime enforcement of non-empty artifacts is out of scope (§9).
+**What the seal does NOT certify (accepted risk).** The model tracks only whether a mechanical *verdict is present* and what it says — never proof/prose **content** (Rice: the truth of a string is undecidable), never LLM agent semantics, never that a worker can **start**, that a pinned **model is reachable**, or that a completed node produced a **non-empty artifact**. A green seal means the *shape* of the attack is sound; it is not a promise that the attack *ran*. Runtime enforcement of non-empty artifacts is out of scope (§9).
 
-**Fail-closed still holds.** If TLC is *unavailable* (no JRE / `tla2tools.jar`),
-`cs spore run` refuses rather than pretend a proof ran — pass
-`--allow-unchecked-seal` to opt into the risk (the line stays honest:
-`seal: present, NOT verified`). If TLC *rejects* the proof, germination is
-refused **unconditionally**; the flag cannot override a failed proof.
+**Fail-closed still holds.** If TLC is *unavailable* (no JRE / `tla2tools.jar`), `cs spore run` refuses rather than pretend a proof ran — pass `--allow-unchecked-seal` to opt into the risk (the line stays honest: `seal: present, NOT verified`). If TLC *rejects* the proof, germination is refused **unconditionally**; the flag cannot override a failed proof.
 
-> **Note on this build.** A released `cs` (`≥ 0.2.1`) reports `TLC unavailable`
-> — the seal-verify wiring is on a development branch, not yet merged into any
-> release. The acceptance run verified the seal two ways: directly via TLC
-> (`tla2tools.jar`,
-> green) and via a development-branch `cs` (`seal: verified`). On a released
-> `cs` today, use `--allow-unchecked-seal` and verify the proof yourself with the
-> direct command in [§10](#10-verifying-the-seal-yourself).
+> **Note on this build.** A released `cs` (`≥ 0.2.1`) reports `TLC unavailable` — the seal-verify wiring is on a development branch, not yet merged into any release. The acceptance run verified the seal two ways: directly via TLC (`tla2tools.jar`, green) and via a development-branch `cs` (`seal: verified`). On a released `cs` today, use `--allow-unchecked-seal` and verify the proof yourself with the direct command in [§10](#10-verifying-the-seal-yourself).
 
 ---
 
 ## 3. The full lane — validate → run
 
-Same posture as the starter lane: run these **from your dedicated mission
-project** (§1 step 2), naming the spore by path. `$SPORE` is
-`…/sporarium/spores/math-attack`.
+Same posture as the starter lane: run these **from your dedicated mission project** (§1 step 2), naming the spore by path. `$SPORE` is `…/sporarium/spores/math-attack`.
 
 ```sh
 cs spore validate "$SPORE/spore.toml" \
@@ -334,19 +183,9 @@ cs spore run "$SPORE/spore.toml" --var subject="…" --var problem_statement="�
 tmux new -d -s runtime cs run --resident --poll-interval 10
 ```
 
-**Which root does `cs run` take?** This DAG has **two** roots: `decompose` (the
-scientific spine) and `trace` (the always-on sidecar, a root+leaf that depends on
-nothing). The legacy `cs run <molecule-id>` mode walks the sub-DAG reachable from
-one root — which would leave the *other* root untackled. So drive the **whole
-ensemble** with `cs run --resident` (the molecule argument is ignored in resident
-mode; both roots drain). To get a specific molecule id if you want the legacy
-single-root mode instead, read it from `cs spore run … --json` (one NDJSON line
-per germinated molecule) or list them with `cs ensemble`; then
-`cs run <decompose-id>` and `cs tackle <trace-id>` separately.
+**Which root does `cs run` take?** This DAG has **two** roots: `decompose` (the scientific spine) and `trace` (the always-on sidecar, a root+leaf that depends on nothing). The legacy `cs run <molecule-id>` mode walks the sub-DAG reachable from one root — which would leave the *other* root untackled. So drive the **whole ensemble** with `cs run --resident` (the molecule argument is ignored in resident mode; both roots drain). To get a specific molecule id if you want the legacy single-root mode instead, read it from `cs spore run … --json` (one NDJSON line per germinated molecule) or list them with `cs ensemble`; then `cs run <decompose-id>` and `cs tackle <trace-id>` separately.
 
-At the single-target default (`subquestions=["main"]`, observability off) the
-full lane is **18 calls** (16 fixed + 2 fan-out). `--var list=a,b,c` splits on
-commas; `--json` emits one NDJSON line per call.
+At the single-target default (`subquestions=["main"]`, observability off) the full lane is **18 calls** (16 fixed + 2 fan-out). `--var list=a,b,c` splits on commas; `--json` emits one NDJSON line per call.
 
 ### The DAG topology (v4, gate split + re-attack loop)
 
@@ -384,16 +223,9 @@ flowchart TD
     class react loop
 ```
 
-At the default `rounds = 1` the `re-attack` node **germinates nothing**: the
-round-1 nodes are the untouched v3.2 nodes with their v3.2 filenames, and the
-evidence-gate folds round 1 directly. The graph above is then exactly the v3.2
-graph with one dormant node.
+At the default `rounds = 1` the `re-attack` node **germinates nothing**: the round-1 nodes are the untouched v3.2 nodes with their v3.2 filenames, and the evidence-gate folds round 1 directly. The graph above is then exactly the v3.2 graph with one dormant node.
 
-The two branches — informal (`proof-attempt` / `notebooks` / `skeptic`) and
-formal (`lean-skeleton` / `lean-probe` / `red-team-corpus`) — fork from
-`concept-cards` and run **in parallel**. Pinning the Lean statement early (a
-fidelity anchor) prevents it drifting while the informal proof is written. The
-gates (highlighted) are the fail-closed points.
+The two branches — informal (`proof-attempt` / `notebooks` / `skeptic`) and formal (`lean-skeleton` / `lean-probe` / `red-team-corpus`) — fork from `concept-cards` and run **in parallel**. Pinning the Lean statement early (a fidelity anchor) prevents it drifting while the informal proof is written. The gates (highlighted) are the fail-closed points.
 
 ---
 
@@ -423,102 +255,42 @@ gates (highlighted) are the fail-closed points.
 
 ### Clean room — keep the worktree free of prior attacks (v5.1)
 
-The first full-lane run taught this the hard way. A solo attempt at the *same*
-conjecture was committed into the mission galaxy's working tree, at its root,
-under a generic filename, while the fleet was still running. Nothing in the spore
-said what counted as project material, so the fleet read it and folded it in — it
-surfaced in the source ledger, the concept cards, two proof attempts, the
-red-team corpus and the evidence verdict.
+The first full-lane run taught this the hard way. A solo attempt at the *same* conjecture was committed into the mission galaxy's working tree, at its root, under a generic filename, while the fleet was still running. Nothing in the spore said what counted as project material, so the fleet read it and folded it in — it surfaced in the source ledger, the concept cards, two proof attempts, the red-team corpus and the evidence verdict.
 
-The fleet handled it well: it flagged one of the document's expansions as
-**unsourced**, a proof attempt explicitly declined to use it, and no result
-rested on it. But *a run that has read a baseline cannot be compared against that
-baseline* — the benchmark was gone, silently.
+The fleet handled it well: it flagged one of the document's expansions as **unsourced**, a proof attempt explicitly declined to use it, and no result rested on it. But *a run that has read a baseline cannot be compared against that baseline* — the benchmark was gone, silently.
 
 Two halves of the fix, and you need both:
 
-- **In the spore (automatic).** A constitution pillar plus per-node briefs declare
-  the input perimeter: your inputs are exactly your upstream artifacts, the
-  declared literature anchors, and sources you fetch and record in the ledger.
-  Any other file in the tree is **external prior art** — citable with provenance,
-  never an upstream artifact, never load-bearing.
-- **In your hands (the operator's half).** If you are running a benchmark
-  alongside — another model, a prior attempt, a published attack — keep it
-  **outside the mission worktree for the entire run**, in a sibling directory,
-  and bring the two together only when the fleet has drained. A file that is not
-  there cannot be read.
+- **In the spore (automatic).** A constitution pillar plus per-node briefs declare the input perimeter: your inputs are exactly your upstream artifacts, the declared literature anchors, and sources you fetch and record in the ledger. Any other file in the tree is **external prior art** — citable with provenance, never an upstream artifact, never load-bearing.
+- **In your hands (the operator's half).** If you are running a benchmark alongside — another model, a prior attempt, a published attack — keep it **outside the mission worktree for the entire run**, in a sibling directory, and bring the two together only when the fleet has drained. A file that is not there cannot be read.
 
 ### Tracked delivery — the galaxy is the repo (v5)
 
-Before v5, nodes wrote only to the cosmon-injected run directory under
-`.cosmon/state/spore-runs/…` — which the standard `.cosmon/.gitignore` ignores
-in bulk. `cs done` then merged **zero tracked files**: the science existed, but
-the galaxy's git tree stayed empty, and publishing meant a hand-copied staging
-detour (exactly the failure the first full-lane run hit).
+Before v5, nodes wrote only to the cosmon-injected run directory under `.cosmon/state/spore-runs/…` — which the standard `.cosmon/.gitignore` ignores in bulk. `cs done` then merged **zero tracked files**: the science existed, but the galaxy's git tree stayed empty, and publishing meant a hand-copied staging detour (exactly the failure the first full-lane run hit).
 
-v5 makes delivery a contract, at brief level (zero DAG change — the v4 seal
-stands):
+v5 makes delivery a contract, at brief level (zero DAG change — the v4 seal stands):
 
-- Every operator-facing final artifact is **also written to a git-tracked path
-  in the worker's own worktree, and committed on its branch**: `attack/` (the
-  scientific chain: decompose, ledger, cards, attempts, notebooks, faults,
-  reports, verdicts, synthesis), `paper/` (tex + bib + pdf + authoring log),
-  `lean/`, `corpus/`, `trace/`, `report/` (observability), `docs/lore/`
-  (chronicle).
-- **Relative paths only — never the shared main checkout.** A worker runs in a
-  git worktree. If it writes a deliverable into the main checkout instead, that
-  file is untracked there and `cs done` aborts the merge — *"the following
-  untracked working tree files would be overwritten by merge"* — after which the
-  resident runtime retries that deterministic failure in a tight loop and the
-  whole DAG stalls behind it.
+- Every operator-facing final artifact is **also written to a git-tracked path in the worker's own worktree, and committed on its branch**: `attack/` (the scientific chain: decompose, ledger, cards, attempts, notebooks, faults, reports, verdicts, synthesis), `paper/` (tex + bib + pdf + authoring log), `lean/`, `corpus/`, `trace/`, `report/` (observability), `docs/lore/` (chronicle).
+- **Relative paths only — never the shared main checkout.** A worker runs in a git worktree. If it writes a deliverable into the main checkout instead, that file is untracked there and `cs done` aborts the merge — *"the following untracked working tree files would be overwritten by merge"* — after which the resident runtime retries that deterministic failure in a tight loop and the whole DAG stalls behind it.
 
-  This is worth explaining rather than just forbidding, because the first fix
-  failed. Renaming the destination from "the galaxy root" to "your worktree" did
-  **not** stop it: the brief also hands the worker an *absolute* `output_dir`
-  under `.cosmon/state/`, and a model holding one authoritative absolute path
-  resolves "the galaxy" against it — landing in the main checkout. v5.2 removes
-  the ambiguity at its source instead of renaming it: deliverable paths are
-  **relative to the working directory**, absolute paths to deliverables are
-  forbidden outright, and each producing node confirms with `git status --short`
-  that its artifact is committed in its own worktree before finishing. A rule
-  nobody checks is decoration — the same reason the model-pin section ships a
-  verification command rather than a promise.
-- The molecule-state copy remains the gates' working substrate; re-attack loop
-  internals (`attack-round-K/`) may stay there, with `rounds.md`, the verdict
-  and the **final** round promoted to `attack/re-attack/`.
-- `editorial-verdict` **verifies the contract held** — a missing tracked
-  deliverable is a REWRITE reason, so the tree cannot silently end up empty.
+  This is worth explaining rather than just forbidding, because the first fix failed. Renaming the destination from "the galaxy root" to "your worktree" did **not** stop it: the brief also hands the worker an *absolute* `output_dir` under `.cosmon/state/`, and a model holding one authoritative absolute path resolves "the galaxy" against it — landing in the main checkout. v5.2 removes the ambiguity at its source instead of renaming it: deliverable paths are **relative to the working directory**, absolute paths to deliverables are forbidden outright, and each producing node confirms with `git status --short` that its artifact is committed in its own worktree before finishing. A rule nobody checks is decoration — the same reason the model-pin section ships a verification command rather than a promise.
+- The molecule-state copy remains the gates' working substrate; re-attack loop internals (`attack-round-K/`) may stay there, with `rounds.md`, the verdict and the **final** round promoted to `attack/re-attack/`.
+- `editorial-verdict` **verifies the contract held** — a missing tracked deliverable is a REWRITE reason, so the tree cannot silently end up empty.
 
-Consequence: after the DAG drains and `cs done` merges, the recipient galaxy is
-publishable **exactly as generated** — `git push` and you are done, no staging
-copy, no scrub detour for the science itself (secrets hygiene stays on you).
+Consequence: after the DAG drains and `cs done` merges, the recipient galaxy is publishable **exactly as generated** — `git push` and you are done, no staging copy, no scrub detour for the science itself (secrets hygiene stays on you).
 
 ### The split gate (v3.2 — the gate-split repair)
 
-Before v3.2 a single `seal-gate` ran the citation audit over "the emerging
-paper" — but the paper was produced **downstream** (`write-paper`), so the audit
-had nothing to read and failed closed, blocking the very node that would create
-the paper. A deterministic deadlock. v3.2 splits it in two, and `ArtifactFlow`
-in the seal now makes that class of bug a **seal violation**, not a silent
-runtime hang:
+Before v3.2 a single `seal-gate` ran the citation audit over "the emerging paper" — but the paper was produced **downstream** (`write-paper`), so the audit had nothing to read and failed closed, blocking the very node that would create the paper. A deterministic deadlock. v3.2 splits it in two, and `ArtifactFlow` in the seal now makes that class of bug a **seal violation**, not a silent runtime hang:
 
-- **`evidence-gate`** (pre-synthesis) — gates on the **kernel** leg (`lake build`
-  exit 0, grep-clean of `sorry`/`axiom`; DEGRADED honestly if
-  `formal_backend=none`) and the **skeptic** leg (`faults.md` has zero residual
-  BLOCKERs), over artifacts that already exist. No citation audit here.
-- **`citation-gate`** (post-write) — runs the citation audit (the L0–L3
-  locator-match tiers, defined just below) over the paper `write-paper`
-  produced, against `source-ledger.md`. Zero unresolved L3 / fabricated
-  citations to pass.
+- **`evidence-gate`** (pre-synthesis) — gates on the **kernel** leg (`lake build` exit 0, grep-clean of `sorry`/`axiom`; DEGRADED honestly if `formal_backend=none`) and the **skeptic** leg (`faults.md` has zero residual BLOCKERs), over artifacts that already exist. No citation audit here.
+- **`citation-gate`** (post-write) — runs the citation audit (the L0–L3 locator-match tiers, defined just below) over the paper `write-paper` produced, against `source-ledger.md`. Zero unresolved L3 / fabricated citations to pass.
 
 `editorial-verdict` then SHIPs only if **both** gates promoted.
 
 ### The citation tiers (L0–L3)
 
-The citation audit grades every citation by how firmly its **locator** (page /
-proposition / theorem number) was matched to the exact statement the paper uses
-it to support. Every other file in this package that says "L0/L1/L2/L3" means
-these tiers:
+The citation audit grades every citation by how firmly its **locator** (page / proposition / theorem number) was matched to the exact statement the paper uses it to support. Every other file in this package that says "L0/L1/L2/L3" means these tiers:
 
 | Tier | Meaning |
 |------|---------|
@@ -527,8 +299,7 @@ these tiers:
 | **L2** | Indirect match — `L2_strong` (corroborated by a second source) or `L2_weak` (plausible but the exact locator was not confirmed). |
 | **L3** | **Unresolved**: the source could not be located, or the locator does not support the statement (fabrication risk). |
 
-`L3` and `L2_weak` entries require human review; **zero unresolved L3 (and zero
-fabricated citations) is required for `citation-gate` to pass.**
+`L3` and `L2_weak` entries require human review; **zero unresolved L3 (and zero fabricated citations) is required for `citation-gate` to pass.**
 
 ---
 
@@ -549,18 +320,13 @@ fabricated citations) is required for `citation-gate` to pass.**
 | `profile` | enum `starter\|full` | no | `starter` | Lane posture. `starter` ⇒ run `spore-starter.toml`; `full` ⇒ run this manifest. Advisory (separate manifests). |
 | `delivery` | enum `private\|staged\|public` | no | `private` | Delivery posture for the paper. |
 
-Passing an *empty* `subquestions` list is rejected — a fan-out with nothing to
-range over is a typo, not an intention.
+Passing an *empty* `subquestions` list is rejected — a fan-out with nothing to range over is a typo, not an intention.
 
 ---
 
 ## 5bis. `rounds` — the re-attack loop (v4)
 
-On a conjecture that defeated a frontier system, **one pass will very likely not
-close it.** v3.x modelled a single shot: `proof-attempt → skeptic`, one
-`lean-probe`, then the gates. Re-cycling meant a *manual* re-germination — you
-read `faults.md` and `lean-probe-report.md`, hand-assembled a new brief, and
-germinated a fresh polymer. `rounds` turns that human loop into **data**.
+On a conjecture that defeated a frontier system, **one pass will very likely not close it.** v3.x modelled a single shot: `proof-attempt → skeptic`, one `lean-probe`, then the gates. Re-cycling meant a *manual* re-germination — you read `faults.md` and `lean-probe-report.md`, hand-assembled a new brief, and germinated a fresh polymer. `rounds` turns that human loop into **data**.
 
 ```
 round 1 (the v3.x attack)  → faults-1 + unproved-1
@@ -570,35 +336,17 @@ round 1 (the v3.x attack)  → faults-1 + unproved-1
    → OR `rounds` reached ⇒ BLOCKED + escalate    ⟵ never a silent pass
 ```
 
-**What repeats, what stays pinned.** Repeated per round: `proof-attempt` (×
-subquestions), `lean-probe`, `skeptic`. Pinned once and **never re-opened**: the
-frame and substrate (`decompose` → `frame-deliberation` → `source-ledger` →
-`concept-cards`), the **`lean-skeleton` fidelity anchor** (re-opening it would let
-the theorem drift *between rounds* — the exact failure the early fork exists to
-prevent), and `red-team-corpus` (it tests the *statement*, not proof progress).
+**What repeats, what stays pinned.** Repeated per round: `proof-attempt` (× subquestions), `lean-probe`, `skeptic`. Pinned once and **never re-opened**: the frame and substrate (`decompose` → `frame-deliberation` → `source-ledger` → `concept-cards`), the **`lean-skeleton` fidelity anchor** (re-opening it would let the theorem drift *between rounds* — the exact failure the early fork exists to prevent), and `red-team-corpus` (it tests the *statement*, not proof progress).
 
-**Two numbers, on purpose.** `[spore.node.bounds].max_instances = 5` is the
-**structural ceiling** — the foaming bound the seal certifies, fixed for all
-runs. `rounds` is the **runtime target** *this* run counts to beneath it, and it
-may stop earlier on the stop condition.
+**Two numbers, on purpose.** `[spore.node.bounds].max_instances = 5` is the **structural ceiling** — the foaming bound the seal certifies, fixed for all runs. `rounds` is the **runtime target** *this* run counts to beneath it, and it may stop earlier on the stop condition.
 
-**Zero new format primitives.** `re-attack` is `kind = "emergent"` with a
-`[spore.node.bounds]` block — the same shipped pair the cosmon-dev spore's
-`converge` node already uses and already seals. A `fanout` could not express it:
-fan-out instances are parallel and mutually independent, and there is no channel
-for *"round K is blocked-by round K−1"*. Feedback is serial-dependent; emergent
-forward-nucleation is.
+**Zero new format primitives.** `re-attack` is `kind = "emergent"` with a `[spore.node.bounds]` block — the same shipped pair the cosmon-dev spore's `converge` node already uses and already seals. A `fanout` could not express it: fan-out instances are parallel and mutually independent, and there is no channel for *"round K is blocked-by round K−1"*. Feedback is serial-dependent; emergent forward-nucleation is.
 
 ### Cost — budget the worst case
 
-Per-round marginal cost is the re-nucleated bodies of one round: `proof-attempt`
-(× subquestions, reasoning tier), `lean-probe` (build tier), `skeptic` (reasoning
-tier). The source refresh is folded into the attempt brief, not a separate node.
+Per-round marginal cost is the re-nucleated bodies of one round: `proof-attempt` (× subquestions, reasoning tier), `lean-probe` (build tier), `skeptic` (reasoning tier). The source refresh is folded into the attempt brief, not a separate node.
 
-**A round is not a fixed unit of spend.** Each round re-reads the accumulating
-fault and unproved history, so token cost per call **rises with K** — budget
-*super-linearly*. The table gives the **worst case** (cap-exhausted, no early
-exit) as your ceiling; early exit only ever reduces it.
+**A round is not a fixed unit of spend.** Each round re-reads the accumulating fault and unproved history, so token cost per call **rises with K** — budget *super-linearly*. The table gives the **worst case** (cap-exhausted, no early exit) as your ceiling; early exit only ever reduces it.
 
 | `rounds` | Worst-case node executions | Worst-case cost vs. `rounds=1` |
 |----------|---------------------------|-------------------------------|
@@ -607,56 +355,28 @@ exit) as your ceiling; early exit only ever reduces it.
 | `3` | + 2 × (N + 2) | ~3× the attack legs, **> 3×** in tokens |
 | `5` (ceiling) | + 4 × (N + 2) | ~5× the attack legs, **≫ 5×** in tokens |
 
-The loop is capped at 5 because the real limit is not compute — it is the
-**human review burden** of that many full rounds of proofs.
+The loop is capped at 5 because the real limit is not compute — it is the **human review burden** of that many full rounds of proofs.
 
-For a conjecture hard enough to warrant this spore, early exit will fire *rarely*
-and the cap-exhaustion tail is the likely path. The gain is real but modest for
-the typical mission; it costs nothing to have.
+For a conjecture hard enough to warrant this spore, early exit will fire *rarely* and the cap-exhaustion tail is the likely path. The gain is real but modest for the typical mission; it costs nothing to have.
 
 ### Preconditions and refusals
 
-- **`rounds ≥ 2` needs a driver-capable `cs`** — one carrying `cs wait` and
-  `cs run --resident`, because the loop nucleates children mid-run and waits on
-  them. A frozen `cosmon-remote` pilot surface has neither and **cannot drive
-  this loop at all**. The convergence formula's `preflight` step checks both
-  before anything else and refuses with *"re-germinate with `rounds=1`"* rather
-  than half-running. Confirm this at germination time — it is a documented,
-  testable precondition of the parcel, not a silent one.
-- **`formal_backend = "none"`** means the kernel leg is honestly DEGRADED every
-  round, so the strict stop condition (*kernel PROVED*) can **never** fire and the
-  loop always runs to the cap. Either budget for that or run `rounds=1`.
-- **`rounds > 5` is refused at validate.** The `rounds` runtime target may not
-  exceed the sealed structural ceiling `[spore.node.bounds].max_instances = 5`;
-  `cs spore validate`/`run` fail closed at expansion with *"var 'rounds' = N
-  exceeds its own [bounds] max_instances = 5"* (verified on `cs 0.2.2`, build
-  94ba88c — `--var rounds=9` exits non-zero). See [§9](#9-what-is-not-enforced-honest-boundary).
+- **`rounds ≥ 2` needs a driver-capable `cs`** — one carrying `cs wait` and `cs run --resident`, because the loop nucleates children mid-run and waits on them. A frozen `cosmon-remote` pilot surface has neither and **cannot drive this loop at all**. The convergence formula's `preflight` step checks both before anything else and refuses with *"re-germinate with `rounds=1`"* rather than half-running. Confirm this at germination time — it is a documented, testable precondition of the parcel, not a silent one.
+- **`formal_backend = "none"`** means the kernel leg is honestly DEGRADED every round, so the strict stop condition (*kernel PROVED*) can **never** fire and the loop always runs to the cap. Either budget for that or run `rounds=1`.
+- **`rounds > 5` is refused at validate.** The `rounds` runtime target may not exceed the sealed structural ceiling `[spore.node.bounds].max_instances = 5`; `cs spore validate`/`run` fail closed at expansion with *"var 'rounds' = N exceeds its own [bounds] max_instances = 5"* (verified on `cs 0.2.2`, build 94ba88c — `--var rounds=9` exits non-zero). See [§9](#9-what-is-not-enforced-honest-boundary).
 
 ---
 
 ## 6. Model & adapter access
 
-There are **two independent axes**, and confusing them is the single most common
-way a first run surprises you:
+There are **two independent axes**, and confusing them is the single most common way a first run surprises you:
 
 - **`model`** — *which model* answers. `claude-opus-5`, `claude-sonnet-5`, …
-- **`adapter`** — *which runtime* asks it. `claude` (the Claude Code CLI in a
-  tmux pane), `codex` (the OpenAI Codex CLI, likewise), `openai` / `anthropic`
-  (in-process HTTP), `local` / `ollama` (in-process, operator-run weights), and
-  a few more. `cs config adapters --json` lists every name yours accepts.
+- **`adapter`** — *which runtime* asks it. `claude` (the Claude Code CLI in a tmux pane), `codex` (the OpenAI Codex CLI, likewise), `openai` / `anthropic` (in-process HTTP), `local` / `ollama` (in-process, operator-run weights), and a few more. `cs config adapters --json` lists every name yours accepts.
 
-Both travel on the **formula step** — the only in-zip channel, because a spore
-node has no `model` / `adapter` field and the spore→nucleate path drops the
-flags. Each resolves fresh at every `cs tackle`, and neither propagates across
-nucleation.
+Both travel on the **formula step** — the only in-zip channel, because a spore node has no `model` / `adapter` field and the spore→nucleate path drops the flags. Each resolves fresh at every `cs tackle`, and neither propagates across nucleation.
 
-> 🛑 **Install the formulas, or every pin is silently ignored.** A germinated
-> molecule stores its formula by **id** (`formula_id = "task-work-reasoning"`),
-> not by path. At tackle time `cs` resolves that id against the *mission
-> project's* registry, `.cosmon/formulas/` — **not** against the spore directory
-> you germinated from. If the spore's formula files are not in that registry,
-> the id resolves to nothing, no pin is found, and the run falls back to the
-> adapter's default **without saying so**. Copy them in before the first run:
+> 🛑 **Install the formulas, or every pin is silently ignored.** A germinated molecule stores its formula by **id** (`formula_id = "task-work-reasoning"`), not by path. At tackle time `cs` resolves that id against the *mission project's* registry, `.cosmon/formulas/` — **not** against the spore directory you germinated from. If the spore's formula files are not in that registry, the id resolves to nothing, no pin is found, and the run falls back to the adapter's default **without saying so**. Copy them in before the first run:
 >
 > ```sh
 > cp "$SPORE"/formulas/*.formula.toml .cosmon/formulas/
@@ -671,18 +391,9 @@ nucleation.
 > # want: source = formula_pin      (a "default" here means the pins are dead)
 > ```
 >
-> This bit us on the first full-lane run: the whole fleet ran flat on one model
-> from `[adapters.claude] default_model`, and the per-leg tiering documented
-> below never applied. Nothing failed, nothing warned — the run just quietly was
-> not the run described here. Set `default_model` as a *floor* beneath the pins,
-> never as a substitute for them.
+> This bit us on the first full-lane run: the whole fleet ran flat on one model from `[adapters.claude] default_model`, and the per-leg tiering documented below never applied. Nothing failed, nothing warned — the run just quietly was not the run described here. Set `default_model` as a *floor* beneath the pins, never as a substitute for them.
 
-> ⚠️ **The floor is `local`, not `claude`.** If you set nothing, `cs tackle`
-> falls through to the built-in `local` adapter — an Ollama-backed in-process
-> loop. That is deliberate (a paid dispatch is never inadvertent), but it means
-> **this spore's `claude-*` model pins are meaningless until you choose the
-> `claude` adapter**: a `claude-opus-5` id handed to `local` is an invalid
-> `(adapter, model)` pair. Do this once, before the quickstart:
+> ⚠️ **The floor is `local`, not `claude`.** If you set nothing, `cs tackle` falls through to the built-in `local` adapter — an Ollama-backed in-process loop. That is deliberate (a paid dispatch is never inadvertent), but it means **this spore's `claude-*` model pins are meaningless until you choose the `claude` adapter**: a `claude-opus-5` id handed to `local` is an invalid `(adapter, model)` pair. Do this once, before the quickstart:
 >
 > ```sh
 > export COSMON_DEFAULT_ADAPTER=claude        # this session only
@@ -704,23 +415,13 @@ Each full-lane node then runs on a model matched to its cognitive load.
 
 ### The mechanically-effective single-model default is the STARTER lane
 
-The premortem (a pre-mortem review of v3 — "imagine this shipped and failed;
-list why") asked for portable single-model execution to be the *mechanically
-effective* default. That ask is met by the **starter lane**: every starter node binds
-one formula (`task-work-build`, `claude-opus-5`), so a recipient with a single
-model runs it with **no model override at all**. Start there.
+The premortem (a pre-mortem review of v3 — "imagine this shipped and failed; list why") asked for portable single-model execution to be the *mechanically effective* default. That ask is met by the **starter lane**: every starter node binds one formula (`task-work-build`, `claude-opus-5`), so a recipient with a single model runs it with **no model override at all**. Start there.
 
-(That covers the *model* axis only. The *adapter* axis still needs the one-time
-choice in the box above — otherwise the starter lane's `claude-opus-5` pin is
-handed to the `local` floor, which is not a legal pair. One `export`, once.)
+(That covers the *model* axis only. The *adapter* axis still needs the one-time choice in the box above — otherwise the starter lane's `claude-opus-5` pin is handed to the `local` floor, which is not a legal pair. One `export`, once.)
 
 ### On the full lane, `models=single` is posture + a global override
 
-The pins are **inert until a molecule is tackled** — `validate` and germination
-never touch them, so an unavailable model never breaks parsing or germination.
-For the full lane, a spore param cannot rewrite a formula file at germination,
-so `models=single` is a **posture declaration**, and the effective
-override is global:
+The pins are **inert until a molecule is tackled** — `validate` and germination never touch them, so an unavailable model never breaks parsing or germination. For the full lane, a spore param cannot rewrite a formula file at germination, so `models=single` is a **posture declaration**, and the effective override is global:
 
 ```sh
 COSMON_DEFAULT_MODEL=claude-opus-5 cs run --resident --poll-interval 10   # ranks above every pin
@@ -728,15 +429,11 @@ COSMON_DEFAULT_MODEL=claude-opus-5 cs run --resident --poll-interval 10   # rank
 # or per molecule:  cs tackle <molecule-id> --model claude-opus-5
 ```
 
-That a param cannot mechanically strip full-lane pins is a **missing spore
-primitive**, surfaced back to the cosmon project (not faked here). The same
-gap applies to the adapter axis, which is why §6bis is edits-and-flags rather
-than `--var adapters=…`.
+That a param cannot mechanically strip full-lane pins is a **missing spore primitive**, surfaced back to the cosmon project (not faked here). The same gap applies to the adapter axis, which is why §6bis is edits-and-flags rather than `--var adapters=…`.
 
 ### The two resolution chains, side by side
 
-Both are resolved fresh at every `cs tackle` (highest priority first). They are
-the same shape on purpose — learn one, you know the other.
+Both are resolved fresh at every `cs tackle` (highest priority first). They are the same shape on purpose — learn one, you know the other.
 
 | Rung | Adapter | Model |
 |------|---------|-------|
@@ -749,19 +446,12 @@ the same shape on purpose — learn one, you know the other.
 
 Two consequences worth internalising:
 
-- **The pair is never validated by cosmon.** The model id is carried opaquely;
-  an illegal `(adapter, model)` combination is rejected by the *backend, at
-  launch*. So when you move a step to another provider you must move **both**
-  lines — or drop the `model` pin and let that provider's own default apply.
-- **`cs run --resident` is not a second resolver.** With no `cs run --adapter`
-  directive it stamps nothing and the child `cs tackle` runs the full chain
-  above, so the formula-step pins in this spore are honoured under `--resident`
-  exactly as under a bare `cs tackle`.
+- **The pair is never validated by cosmon.** The model id is carried opaquely; an illegal `(adapter, model)` combination is rejected by the *backend, at launch*. So when you move a step to another provider you must move **both** lines — or drop the `model` pin and let that provider's own default apply.
+- **`cs run --resident` is not a second resolver.** With no `cs run --adapter` directive it stamps nothing and the child `cs tackle` runs the full chain above, so the formula-step pins in this spore are honoured under `--resident` exactly as under a bare `cs tackle`.
 
 ### Print the realized model + adapter for every node
 
-To see exactly what each node will run on (the "realized execution matrix"),
-read each node's bound formula and **both** its pins, plus its `crew_role`:
+To see exactly what each node will run on (the "realized execution matrix"), read each node's bound formula and **both** its pins, plus its `crew_role`:
 
 ```sh
 cs spore validate "$SPORE/spore.toml" --var subject="…" --var problem_statement="…" --json \
@@ -788,15 +478,9 @@ for line in sys.stdin:
 '
 ```
 
-> **Read one caveat into that output.** The snippet reports the *first* pin in
-> each formula file, so a formula whose steps span tiers is under-reported:
-> `converge-math-attack` prints `claude-sonnet-5` (its `preflight` step) while
-> its actual re-attack step is pinned `claude-opus-5`, as the tier table above
-> says. Nodes on single-tier formulas — all the others — are exact. Commented
-> pins deliberately read as *no pin*, which is what they are.
+> **Read one caveat into that output.** The snippet reports the *first* pin in each formula file, so a formula whose steps span tiers is under-reported: `converge-math-attack` prints `claude-sonnet-5` (its `preflight` step) while its actual re-attack step is pinned `claude-opus-5`, as the tier table above says. Nodes on single-tier formulas — all the others — are exact. Commented pins deliberately read as *no pin*, which is what they are.
 
-That reads *intent* from the package. For **ground truth after a run** — what
-actually dispatched, and from which rung — fold the event log:
+That reads *intent* from the package. For **ground truth after a run** — what actually dispatched, and from which rung — fold the event log:
 
 ```sh
 jq -c 'select(.type == "adapter_selected")
@@ -806,12 +490,7 @@ jq -c 'select(.type == "adapter_selected")
 # => {"mol":"task-…-a715","adapter":"claude","from":"global_config"}
 ```
 
-`selection_source` is an **object**, not a string — `.source` is one of
-`cli | formula_step | env_var | config | global_config | default`, and the
-remaining keys carry the provenance (`.flag` for `cli`, `.path` for a config
-row). The molecule key is `mol_id`, not `molecule_id`. Every `cs tackle` emits
-this line whether or not a flag was passed, so the question *"which provider
-scored my paper?"* is answered from disk, never from shell history.
+`selection_source` is an **object**, not a string — `.source` is one of `cli | formula_step | env_var | config | global_config | default`, and the remaining keys carry the provenance (`.flag` for `cli`, `.path` for a config row). The molecule key is `mol_id`, not `molecule_id`. Every `cs tackle` emits this line whether or not a flag was passed, so the question *"which provider scored my paper?"* is answered from disk, never from shell history.
 
 ---
 
@@ -819,27 +498,15 @@ scored my paper?"* is answered from disk, never from shell history.
 
 ### Why: author ≠ scorer is not yet author-provider ≠ scorer-provider
 
-[§11](#11-deliberation--adversarial-review-v31-kept) buys you *author ≠ scorer*:
-every gate is scored by a different **molecule** and a different **worker** than
-the one that authored the artifact. That kills the "I graded my own homework in
-the same context window" failure. It does **not** kill the deeper one: if author
-and scorer are the same model family, they share a training corpus, a tokenizer,
-and a family of blind spots. A confabulated lemma that reads plausible to the
-author reads plausible to the scorer — and gets stamped SHIP twice.
+[§11](#11-deliberation--adversarial-review-v31-kept) buys you *author ≠ scorer*: every gate is scored by a different **molecule** and a different **worker** than the one that authored the artifact. That kills the "I graded my own homework in the same context window" failure. It does **not** kill the deeper one: if author and scorer are the same model family, they share a training corpus, a tokenizer, and a family of blind spots. A confabulated lemma that reads plausible to the author reads plausible to the scorer — and gets stamped SHIP twice.
 
-On a conjecture hard enough to warrant this spore, that correlation is exactly
-where the false positive lives. The counter-measure is a **clean room**: run the
-scorer on a *different vendor's* model than the author. Two providers agreeing
-is weak evidence; two providers *disagreeing* is a fault you would otherwise
-never have seen.
+On a conjecture hard enough to warrant this spore, that correlation is exactly where the false positive lives. The counter-measure is a **clean room**: run the scorer on a *different vendor's* model than the author. Two providers agreeing is weak evidence; two providers *disagreeing* is a fault you would otherwise never have seen.
 
-This is opt-in and off by default. Every candidate line is **shipped commented**
-in the formula files, so turning it on is uncommenting, not authoring.
+This is opt-in and off by default. Every candidate line is **shipped commented** in the formula files, so turning it on is uncommenting, not authoring.
 
 ### Which gates are cheap to split
 
-Four of the five gates already sit on a **different formula file** than the node
-they score — flipping those is a one-file edit with no `spore.toml` change:
+Four of the five gates already sit on a **different formula file** than the node they score — flipping those is a one-file edit with no `spore.toml` change:
 
 | Gate (scorer) | its formula | scores the author… | author's formula | split cost |
 |---|---|---|---|---|
@@ -849,20 +516,13 @@ they score — flipping those is a one-file edit with no `spore.toml` change:
 | `red-team-corpus` | `task-work-reasoning` | the *statement* (decompose / lean-skeleton) | reasoning / build | ⚠️ shares with `proof-attempt` |
 | `skeptic` | `task-work-reasoning` | `proof-attempt` | **`task-work-reasoning`** | ⚠️ **same file as its author** |
 
-`skeptic` is the sharp one: it is the lane's primary adversary *and* it shares
-`task-work-reasoning` with the very node it audits. Uncommenting the adapter
-line in that file moves author **and** scorer together — a different provider,
-but **not** a clean room. Two honest ways out, below.
+`skeptic` is the sharp one: it is the lane's primary adversary *and* it shares `task-work-reasoning` with the very node it audits. Uncommenting the adapter line in that file moves author **and** scorer together — a different provider, but **not** a clean room. Two honest ways out, below.
 
 ### Path A — per-molecule flags (no file edits, use this first)
 
-`cs tackle --adapter` outranks every pin, so you can split providers on a
-*germinated* run without touching the parcel. But mind the race: a
-`cs run --resident` loop will tackle a scorer molecule the moment it goes
-pending, on the shipped pin, before you can type anything. So pick one of:
+`cs tackle --adapter` outranks every pin, so you can split providers on a *germinated* run without touching the parcel. But mind the race: a `cs run --resident` loop will tackle a scorer molecule the moment it goes pending, on the shipped pin, before you can type anything. So pick one of:
 
-**A1 — hand-drive, no resident loop.** Dispatch the frontier yourself in
-topological order; the gates get the flag, everything else does not.
+**A1 — hand-drive, no resident loop.** Dispatch the frontier yourself in topological order; the gates get the flag, everything else does not.
 
 ```sh
 cs tackle <proof-attempt-id>                       # shipped pin -> claude
@@ -871,38 +531,20 @@ cs tackle <editorial-verdict-id> --adapter codex
 cs tackle <citation-gate-id>     --adapter codex
 ```
 
-**A2 — second opinion (recommended, and stronger).** Let the resident loop run
-the whole DAG on the shipped Claude pins, then **re-tackle** each gate
-cross-provider. A re-tackle opens a second attempt on the same molecule against
-the same artifact, so you end up holding *both* verdicts rather than replacing
-one with the other:
+**A2 — second opinion (recommended, and stronger).** Let the resident loop run the whole DAG on the shipped Claude pins, then **re-tackle** each gate cross-provider. A re-tackle opens a second attempt on the same molecule against the same artifact, so you end up holding *both* verdicts rather than replacing one with the other:
 
 ```sh
 cs run <root-id> --resident --poll-interval 10        # complete run, all-Claude
 cs tackle <editorial-verdict-id> --adapter codex      # attempt 2, clean room
 ```
 
-Two SHIPs is corroboration. A SHIP then a REWRITE is the fault you would never
-have seen — and *that disagreement is the whole point of the exercise*. Read
-both artifacts; do not assume the second attempt supersedes the first.
+Two SHIPs is corroboration. A SHIP then a REWRITE is the fault you would never have seen — and *that disagreement is the whole point of the exercise*. Read both artifacts; do not assume the second attempt supersedes the first.
 
-> **Evidence level on A2.** cosmon's attribution layer models re-tackle as a
-> numbered second attempt with its own adapter and model, which is what makes
-> this recipe coherent — but *we have not executed an A2 re-tackle on a
-> completed gate on this bench*. If your `cs` refuses to re-tackle a terminal
-> molecule, fall back to A1 (or Path B) and tell us via an issue. Everything
-> else in this section was exercised against `cs 0.2.2`.
+> **Evidence level on A2.** cosmon's attribution layer models re-tackle as a numbered second attempt with its own adapter and model, which is what makes this recipe coherent — but *we have not executed an A2 re-tackle on a completed gate on this bench*. If your `cs` refuses to re-tackle a terminal molecule, fall back to A1 (or Path B) and tell us via an issue. Everything else in this section was exercised against `cs 0.2.2`.
 
-Either way nothing is edited, nothing is re-sealed, and each dispatch records
-`selection_source: "cli"` in `adapter_selected` — the split is auditable from
-disk afterwards.
+Either way nothing is edited, nothing is re-sealed, and each dispatch records `selection_source: "cli"` in `adapter_selected` — the split is auditable from disk afterwards.
 
-> **Missing primitive.** `cs nucleate --adapter <name>` sets a *durable*
-> per-molecule pin that even a `cs run --resident --adapter <x>` directive
-> cannot override — which is exactly what a clean room wants. `cs spore run`
-> has **no `--adapter` passthrough**, so that pin is unreachable from the spore
-> path (the same gap as `--model`). Surfaced to the cosmon project rather than
-> faked here; until it lands, A1/A2 above are the honest substitutes.
+> **Missing primitive.** `cs nucleate --adapter <name>` sets a *durable* per-molecule pin that even a `cs run --resident --adapter <x>` directive cannot override — which is exactly what a clean room wants. `cs spore run` has **no `--adapter` passthrough**, so that pin is unreachable from the spore path (the same gap as `--model`). Surfaced to the cosmon project rather than faked here; until it lands, A1/A2 above are the honest substitutes.
 
 ### Path B — in-zip pins (travels with the parcel, survives re-germination)
 
@@ -927,14 +569,9 @@ $EDITOR $SPORE/formulas/citation-audit.formula.toml     # citation-gate
 $EDITOR $SPORE/formulas/task-work-mechanical.formula.toml   # evidence-gate (+ trace, instrumentation)
 ```
 
-Note the blast radius of the third: `task-work-mechanical` is bound by five
-nodes, not one — `evidence-gate`, `trace`, and the optional instrumentation
-chain `collector` / `dataviz` / `narrator`. Moving the file moves all five.
-That is usually fine (the other four are transcription nodes), but it is not
-*only* the evidence gate. (`chronicle` is unaffected — it is on `mycelium`.)
+Note the blast radius of the third: `task-work-mechanical` is bound by five nodes, not one — `evidence-gate`, `trace`, and the optional instrumentation chain `collector` / `dataviz` / `narrator`. Moving the file moves all five. That is usually fine (the other four are transcription nodes), but it is not *only* the evidence gate. (`chronicle` is unaffected — it is on `mycelium`.)
 
-For **`skeptic`**, splitting it from `proof-attempt` needs a second formula
-file plus a one-line rebind:
+For **`skeptic`**, splitting it from `proof-attempt` needs a second formula file plus a one-line rebind:
 
 ```sh
 cp $SPORE/formulas/task-work-reasoning.formula.toml \
@@ -954,16 +591,11 @@ path = "formulas/task-work-reasoning-codex.formula.toml"
 #   formula = "task-work-reasoning-codex"      # was "task-work-reasoning"
 ```
 
-**This changes the parcel.** Re-run `cs spore validate` (the seal re-checks: the
-edge set is untouched, so the TLA+ properties hold), and expect a **new
-`cs spore export` bundle hash** — you now ship a variant, not the shipped v4.
+**This changes the parcel.** Re-run `cs spore validate` (the seal re-checks: the edge set is untouched, so the TLA+ properties hold), and expect a **new `cs spore export` bundle hash** — you now ship a variant, not the shipped v4.
 
 ### Configuring the `codex` adapter on your machine
 
-`codex` is a built-in adapter name — confirm with `cs config adapters --json`.
-It spawns the OpenAI Codex CLI in a tmux pane, so the CLI must be installed and
-authenticated on the machine running `cs`. Zero config is required; the block
-below is the escape hatch, and every line is optional:
+`codex` is a built-in adapter name — confirm with `cs config adapters --json`. It spawns the OpenAI Codex CLI in a tmux pane, so the CLI must be installed and authenticated on the machine running `cs`. Zero config is required; the block below is the escape hatch, and every line is optional:
 
 ```toml
 # in your MISSION project's .cosmon/config.toml (NOT in the spore)
@@ -981,46 +613,23 @@ below is the escape hatch, and every line is optional:
 default = "claude"
 ```
 
-A `default_model` here that names a **strong** (frontier) model will fail
-`cs reconcile --check`: config may only ever *downgrade*. Strong is reachable
-from a formula-step pin or `--model`, never silently from config.
+A `default_model` here that names a **strong** (frontier) model will fail `cs reconcile --check`: config may only ever *downgrade*. Strong is reachable from a formula-step pin or `--model`, never silently from config.
 
 ### Honest boundary — what the clean room does NOT give you
 
-- **Nothing enforces it.** The TLA+ seal proves DAG topology; it says nothing
-  about provider assignment. A bare `cs tackle` on a gate whose formula you
-  edited *will* honour the pin — but a `--adapter` flag, an env export, or a
-  `cs run --adapter` directive all outrank it and can silently re-collapse the
-  two providers into one. **Verify with the `adapter_selected` fold above; do
-  not assume.**
-- **It is not an independence proof.** Two vendors are not two independent
-  observers: they train on overlapping public corpora, and on a famous
-  conjecture both may have absorbed the same wrong folklore proof. A
-  cross-provider SHIP is *stronger* evidence than a same-provider SHIP. It is
-  not a certificate.
-- **Tooling is not symmetric.** The `citation-audit` gate degrades on a
-  non-Claude adapter that has no reference-manager tool available: it falls back
-  to resolving DOIs over the network and returns more `L2_weak` verdicts. Read
-  those as *"not resolvable from here"*, not as *"the citation is bad"*.
-- **Cost and pace differ.** Two providers means two rate limits, two auth
-  states, and two failure modes. A gate that dies because a Codex session was
-  never authenticated looks, from the DAG, exactly like a gate that refused.
-  Check `trace/` ([§8](#8-the-always-on-trace-sidecar-v32)) before concluding.
-- **`models=single` does not cover this axis.** There is no `adapters` param.
-  A spore param cannot rewrite a formula file at germination — the same missing
-  primitive as the model axis, surfaced to cosmon rather than faked here.
+- **Nothing enforces it.** The TLA+ seal proves DAG topology; it says nothing about provider assignment. A bare `cs tackle` on a gate whose formula you edited *will* honour the pin — but a `--adapter` flag, an env export, or a `cs run --adapter` directive all outrank it and can silently re-collapse the two providers into one. **Verify with the `adapter_selected` fold above; do not assume.**
+- **It is not an independence proof.** Two vendors are not two independent observers: they train on overlapping public corpora, and on a famous conjecture both may have absorbed the same wrong folklore proof. A cross-provider SHIP is *stronger* evidence than a same-provider SHIP. It is not a certificate.
+- **Tooling is not symmetric.** The `citation-audit` gate degrades on a non-Claude adapter that has no reference-manager tool available: it falls back to resolving DOIs over the network and returns more `L2_weak` verdicts. Read those as *"not resolvable from here"*, not as *"the citation is bad"*.
+- **Cost and pace differ.** Two providers means two rate limits, two auth states, and two failure modes. A gate that dies because a Codex session was never authenticated looks, from the DAG, exactly like a gate that refused. Check `trace/` ([§8](#8-the-always-on-trace-sidecar-v32)) before concluding.
+- **`models=single` does not cover this axis.** There is no `adapters` param. A spore param cannot rewrite a formula file at germination — the same missing primitive as the model axis, surfaced to cosmon rather than faked here.
 
 ---
 
 ## 7. The crew fleet (`fleet.toml`) — advanced
 
-`[spore.fleet]` points at a shipped `fleet.toml`: a **research-grade** fleet of
-16 agents in four sub-fleets. `cs spore run` reads it straight from the package —
-there is no separate install step.
+`[spore.fleet]` points at a shipped `fleet.toml`: a **research-grade** fleet of 16 agents in four sub-fleets. `cs spore run` reads it straight from the package — there is no separate install step.
 
-Each sub-fleet is shown by colour (`classDef`), not by a box, to keep the render
-clean. The shared constitution (LLM firewall · term-only acceptance · author ≠
-scorer · statement fidelity · closed-set citation) governs all four.
+Each sub-fleet is shown by colour (`classDef`), not by a box, to keep the render clean. The shared constitution (LLM firewall · term-only acceptance · author ≠ scorer · statement fidelity · closed-set citation) governs all four.
 
 ```mermaid
 flowchart TD
@@ -1048,17 +657,9 @@ flowchart TD
 
 ### `crew_role` is advisory payload — NOT a proven assignment
 
-Each DAG node names a crew role via a `crew_role` var. **This is descriptive
-data that travels in the zip; it is *not* a mechanically verified node→agent
-assignment.** The germinated molecule carries the string, and the worker is
-*expected* to read the matching briefing from `fleet.toml` — but nothing in the
-current spore format *enforces* that a `proofsmith`-tagged molecule is dispatched
-to the `proofsmith` agent. Treat the crew map as a routing *intent*, not a proof.
+Each DAG node names a crew role via a `crew_role` var. **This is descriptive data that travels in the zip; it is *not* a mechanically verified node→agent assignment.** The germinated molecule carries the string, and the worker is *expected* to read the matching briefing from `fleet.toml` — but nothing in the current spore format *enforces* that a `proofsmith`-tagged molecule is dispatched to the `proofsmith` agent. Treat the crew map as a routing *intent*, not a proof.
 
-To see each node's realized formula / crew_role / model, use the command in
-[§6](#6-model--adapter-access). To inspect the flattened crew roster before running:
-`cs fleet resolve fleet.toml` (run `cs fleet --help` for the fleet verbs on your
-`cs`).
+To see each node's realized formula / crew_role / model, use the command in [§6](#6-model--adapter-access). To inspect the flattened crew roster before running: `cs fleet resolve fleet.toml` (run `cs fleet --help` for the fleet verbs on your `cs`).
 
 | Node | `crew_role` | Sub-fleet |
 |------|-------------|-----------|
@@ -1078,83 +679,33 @@ To see each node's realized formula / crew_role / model, use the command in
 
 ## 8. The always-on trace sidecar (v3.2)
 
-The `trace` node is a **root+leaf**: it has no dependencies (runnable the instant
-germination finishes, before any scientific node is tackled) and nothing depends
-on it (a stall anywhere downstream never strands it). It is **not** gated by
-`observability` and **not** downstream of `chronicle` — that was the trap the
-premortem named: the consolation trace scheduled behind the whole
-scientific DAG, lost the moment the DAG stalled. `trace/` captures raw events,
-each node's brief, and artifact hashes, so even a failed or stalled run leaves an
-auditable record of *what ran, on what model, producing what bytes*.
+The `trace` node is a **root+leaf**: it has no dependencies (runnable the instant germination finishes, before any scientific node is tackled) and nothing depends on it (a stall anywhere downstream never strands it). It is **not** gated by `observability` and **not** downstream of `chronicle` — that was the trap the premortem named: the consolation trace scheduled behind the whole scientific DAG, lost the moment the DAG stalled. `trace/` captures raw events, each node's brief, and artifact hashes, so even a failed or stalled run leaves an auditable record of *what ran, on what model, producing what bytes*.
 
-The optional **charts** over that data (`collector → dataviz → narrator`) still
-live behind `observability`; only the raw capture is unconditional.
+The optional **charts** over that data (`collector → dataviz → narrator`) still live behind `observability`; only the raw capture is unconditional.
 
-**Honest boundary:** a single node run snapshots once; truly *continuous*
-append-only capture during a live run is a cosmon-core sidecar, out of scope this
-release (§9).
+**Honest boundary:** a single node run snapshots once; truly *continuous* append-only capture during a live run is a cosmon-core sidecar, out of scope this release (§9).
 
 ---
 
 ## 9. What is NOT enforced (honest boundary)
 
-The premortem surfaced runtime guarantees this spore does **not** provide. They
-are typed separately as cosmon-core work; documented here so you are not
-surprised:
+The premortem surfaced runtime guarantees this spore does **not** provide. They are typed separately as cosmon-core work; documented here so you are not surprised:
 
-- **Non-empty-artifact enforcement.** A worker/adapter *could* emit a
-  terminal `completed` state without producing its artifact. The spore declares
-  acceptance in prose, but the runtime does not yet refuse completion on an
-  absent/empty file. Mitigation: read `trace/hashes.tsv` — a blank hash is a
-  failure.
-- **Capability preflight.** There is no pre-germination resolver that
-  rejects an unreachable model / tool / auth before molecules are created. Pins
-  are inert until tackle (§6); an unreachable model fails at tackle, not before.
-- **Orphan-recovery bounds.** No documented retry cap or checkpoint-across-
-  resurrection guarantee. Drive with `cs run` and watch `cs status`.
-- **Cost ceilings.** `concurrency_cap` limits *simultaneous* workers, not
-  total tokens / money / wall-time. There is no stop-loss. Budget by hand. With
-  `rounds ≥ 2` this matters more, not less — see the [§5bis cost
-  table](#cost--budget-the-worst-case).
-- **`rounds > max_instances` IS refused at validate** *(v4)*. The `rounds`
-  runtime target may not exceed the sealed structural ceiling
-  `[spore.node.bounds].max_instances = 5`; a larger value would drive the loop to
-  foam past the bound the seal certifies. cosmon fails closed at expansion —
-  `cs spore validate`/`run` abort with *"emergent node 're-attack': var 'rounds'
-  = N exceeds its own [bounds] max_instances = 5"* and a non-zero exit (verified
-  on `cs 0.2.2`, build 94ba88c — `--var rounds=9` refused). Defence in depth: the
-  convergence formula's `preflight` step re-checks the bound at runtime before
-  nucleating anything. So the ceiling is machine-enforced, not merely
-  operator-disciplined.
-- **Provider assignment is not sealed.** The `.tla` proves DAG topology and
-  artifact flow; it says nothing about *which adapter* scores which node. A
-  cross-provider clean room ([§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review))
-  is a formula-step pin, and a `--adapter` flag, a `$COSMON_DEFAULT_ADAPTER`
-  export, or a `cs run --adapter` directive all outrank it — so a run you
-  *believe* is cross-provider can silently collapse to one vendor. There is no
-  gate that refuses it. Verify after the fact by folding `adapter_selected` out
-  of `events.jsonl` ([§6](#6-model--adapter-access)); the honest posture is
-  "checked the log", never "configured it once".
-- **No `--adapter` on the spore path.** `cs nucleate --adapter` sets a durable
-  per-molecule pin that beats a resident run directive; `cs spore run` has no
-  passthrough for it, so germinated molecules carry no durable provider intent.
-  Missing spore primitive, surfaced to cosmon (same shape as `--model`).
+- **Non-empty-artifact enforcement.** A worker/adapter *could* emit a terminal `completed` state without producing its artifact. The spore declares acceptance in prose, but the runtime does not yet refuse completion on an absent/empty file. Mitigation: read `trace/hashes.tsv` — a blank hash is a failure.
+- **Capability preflight.** There is no pre-germination resolver that rejects an unreachable model / tool / auth before molecules are created. Pins are inert until tackle (§6); an unreachable model fails at tackle, not before.
+- **Orphan-recovery bounds.** No documented retry cap or checkpoint-across- resurrection guarantee. Drive with `cs run` and watch `cs status`.
+- **Cost ceilings.** `concurrency_cap` limits *simultaneous* workers, not total tokens / money / wall-time. There is no stop-loss. Budget by hand. With `rounds ≥ 2` this matters more, not less — see the [§5bis cost table](#cost--budget-the-worst-case).
+- **`rounds > max_instances` IS refused at validate** *(v4)*. The `rounds` runtime target may not exceed the sealed structural ceiling `[spore.node.bounds].max_instances = 5`; a larger value would drive the loop to foam past the bound the seal certifies. cosmon fails closed at expansion — `cs spore validate`/`run` abort with *"emergent node 're-attack': var 'rounds' = N exceeds its own [bounds] max_instances = 5"* and a non-zero exit (verified on `cs 0.2.2`, build 94ba88c — `--var rounds=9` refused). Defence in depth: the convergence formula's `preflight` step re-checks the bound at runtime before nucleating anything. So the ceiling is machine-enforced, not merely operator-disciplined.
+- **Provider assignment is not sealed.** The `.tla` proves DAG topology and artifact flow; it says nothing about *which adapter* scores which node. A cross-provider clean room ([§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review)) is a formula-step pin, and a `--adapter` flag, a `$COSMON_DEFAULT_ADAPTER` export, or a `cs run --adapter` directive all outrank it — so a run you *believe* is cross-provider can silently collapse to one vendor. There is no gate that refuses it. Verify after the fact by folding `adapter_selected` out of `events.jsonl` ([§6](#6-model--adapter-access)); the honest posture is "checked the log", never "configured it once".
+- **No `--adapter` on the spore path.** `cs nucleate --adapter` sets a durable per-molecule pin that beats a resident run directive; `cs spore run` has no passthrough for it, so germinated molecules carry no durable provider intent. Missing spore primitive, surfaced to cosmon (same shape as `--model`).
 
-The **release gate** that would lift the "experimental" label: run this exact
-immutable zip + released `cs` for ≥24h in a tester-shaped linux/arm64 container,
-including a worker-death drill, an unavailable-model case, and a no-JVM/no-Lean
-case, and publish the trace.
+The **release gate** that would lift the "experimental" label: run this exact immutable zip + released `cs` for ≥24h in a tester-shaped linux/arm64 container, including a worker-death drill, an unavailable-model case, and a no-JVM/no-Lean case, and publish the trace.
 
 ---
 
 ## 10. Verifying the seal yourself
 
-The seal's five properties are a TLA+ model (`spore.tla`) TLC checks against a
-small bounded world (`spore.cfg`). The checker jar (`tla2tools.jar`) ships in the
-cosmon repo at `docs/specs/tla2tools.jar` — point `TLA2TOOLS_JAR` at it and run
-the proof directly with any Java 11+ on your `PATH`, from inside the spore
-directory (`cd "$SPORE"`). This one is pure Java — it germinates nothing, so
-the §1 mission-project rule does not apply:
+The seal's five properties are a TLA+ model (`spore.tla`) TLC checks against a small bounded world (`spore.cfg`). The checker jar (`tla2tools.jar`) ships in the cosmon repo at `docs/specs/tla2tools.jar` — point `TLA2TOOLS_JAR` at it and run the proof directly with any Java 11+ on your `PATH`, from inside the spore directory (`cd "$SPORE"`). This one is pure Java — it germinates nothing, so the §1 mission-project rule does not apply:
 
 ```sh
 export TLA2TOOLS_JAR=/path/to/cosmon/docs/specs/tla2tools.jar
@@ -1164,56 +715,23 @@ java -XX:+UseParallelGC -cp "$TLA2TOOLS_JAR" tlc2.TLC \
 #    (1382 distinct states, 4061 generated, depth 27 — measured for v4)
 ```
 
-The shipped `spore.cfg` models `MaxRounds = 3`: the **smallest** bound that
-exercises the loop as a real machine (two non-converged rounds, then exhaustion,
-with the clean fixpoint reachable at any round *including round 0* — the
-`rounds = 1` dormant world). The shipment-gate bound `MaxRounds = 5` was also run
-green (1570 distinct, depth 29): ~94 extra states per round, because the loop adds
-**one bounded scalar**, not a topology multiplier. Larger bounds hold *a fortiori*
-— the loop variant only grows the cap, never the shape.
+The shipped `spore.cfg` models `MaxRounds = 3`: the **smallest** bound that exercises the loop as a real machine (two non-converged rounds, then exhaustion, with the clean fixpoint reachable at any round *including round 0* — the `rounds = 1` dormant world). The shipment-gate bound `MaxRounds = 5` was also run green (1570 distinct, depth 29): ~94 extra states per round, because the loop adds **one bounded scalar**, not a topology multiplier. Larger bounds hold *a fortiori* — the loop variant only grows the cap, never the shape.
 
-Eight loop states were confirmed **reachable** (each by running its negation as an
-invariant and observing the violation), so the seal is not vacuously green:
-exhaustion, the clean fixpoint, `round = MaxRounds`, the **runtime early exit**
-(`PROVED_CLEAN` with `round < MaxRounds`), the dormant `rounds=1` fold
-(`PROVED_CLEAN` at `round = 0`), `SHIP` (no v3.2 regression), and both cap
-outcomes (DEGRADED under `backend=none`, BLOCKED under `backend=lean`).
+Eight loop states were confirmed **reachable** (each by running its negation as an invariant and observing the violation), so the seal is not vacuously green: exhaustion, the clean fixpoint, `round = MaxRounds`, the **runtime early exit** (`PROVED_CLEAN` with `round < MaxRounds`), the dormant `rounds=1` fold (`PROVED_CLEAN` at `round = 0`), `SHIP` (no v3.2 regression), and both cap outcomes (DEGRADED under `backend=none`, BLOCKED under `backend=lean`).
 
-The starter lane has its own proof — swap in `spore_starter.cfg` /
-`spore_starter.tla`. `ArtifactFlow` and `GateFailClosed` are load-bearing:
-injecting the old gate-split bug (a gate that requires a downstream artifact) or a
-promote-on-absence gate makes TLC report `Invariant SealInvariant is violated`;
-the acceptance bench records both negative tests (report available on request via
-an issue at https://github.com/noogram/sporarium/issues).
+The starter lane has its own proof — swap in `spore_starter.cfg` / `spore_starter.tla`. `ArtifactFlow` and `GateFailClosed` are load-bearing: injecting the old gate-split bug (a gate that requires a downstream artifact) or a promote-on-absence gate makes TLC report `Invariant SealInvariant is violated`; the acceptance bench records both negative tests (report available on request via an issue at https://github.com/noogram/sporarium/issues).
 
 ---
 
 ## 11. Deliberation & adversarial review (v3.1, kept)
 
-Before any downstream compute, the **`frame-deliberation`** panel (dispositions
-of question-framing *à la* Wheeler, first-principles *à la* Feynman, formal-limits
-*à la* Gödel) stress-tests the decomposition and the falsifiability tests. It
-**recommends and never nucleates** (a Tier-0 leaf), so it shapes everything
-downstream without foaming the DAG. Default `panel=auto` picks the closest
-*available* Claude Code subagents (no persona file ships in the zip).
+Before any downstream compute, the **`frame-deliberation`** panel (dispositions of question-framing *à la* Wheeler, first-principles *à la* Feynman, formal-limits *à la* Gödel) stress-tests the decomposition and the falsifiability tests. It **recommends and never nucleates** (a Tier-0 leaf), so it shapes everything downstream without foaming the DAG. Default `panel=auto` picks the closest *available* Claude Code subagents (no persona file ships in the zip).
 
-Every gate is scored by a **different molecule and worker** than the one that
-authored the artifact: `skeptic` ≠ `proof-attempt`; `evidence-gate` /
-`citation-gate` ≠ `synthesize` / `write-paper`; `editorial-verdict`
-(`crew_role=reviewer`, the `temp-review` review-as-formula) ≠ `write-paper`
-(`crew_role=writer`). The reviewer *scores*; it does not rewrite.
+Every gate is scored by a **different molecule and worker** than the one that authored the artifact: `skeptic` ≠ `proof-attempt`; `evidence-gate` / `citation-gate` ≠ `synthesize` / `write-paper`; `editorial-verdict` (`crew_role=reviewer`, the `temp-review` review-as-formula) ≠ `write-paper` (`crew_role=writer`). The reviewer *scores*; it does not rewrite.
 
-That separation is **molecule-level and worker-level, not provider-level**: by
-default every node in this spore runs on the same model family, so author and
-scorer share a training corpus and a family of blind spots. To break that
-correlation as well — a *clean room* — see
-[§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review), where
-every candidate step ships a commented `adapter = "codex"` pin.
+That separation is **molecule-level and worker-level, not provider-level**: by default every node in this spore runs on the same model family, so author and scorer share a training corpus and a family of blind spots. To break that correlation as well — a *clean room* — see [§6bis](#6bis-multi-model-operation--cross-provider-clean-room-review), where every candidate step ships a commented `adapter = "codex"` pin.
 
-> **Naming note.** The original `temp-review` was literally a
-> *backlog-temperature* sweep. We lifted its **discipline** (structured steps +
-> fail-closed tabular acceptance + author ≠ scorer) and instantiated it as the
-> editorial review, keeping the alias so the binding holds by name.
+> **Naming note.** The original `temp-review` was literally a *backlog-temperature* sweep. We lifted its **discipline** (structured steps + fail-closed tabular acceptance + author ≠ scorer) and instantiated it as the editorial review, keeping the alias so the binding holds by name.
 
 ---
 
@@ -1246,8 +764,7 @@ math-attack/
 
 ## 13. Export — a content-addressed bundle for sharing
 
-`export` germinates nothing, so (like `validate`) it may be run from anywhere,
-including inside the spore directory:
+`export` germinates nothing, so (like `validate`) it may be run from anywhere, including inside the spore directory:
 
 ```sh
 cs spore export "$SPORE/spore.toml" --out dist/
@@ -1255,67 +772,35 @@ cs spore export "$SPORE/spore.toml" --out dist/
 # => astra:  dist/ro-crate-metadata.json   (a descriptive-metadata sidecar)
 ```
 
-Same bytes ⇒ same id. Share the hash to pin exactly which version of the attack
-someone ran.
+Same bytes ⇒ same id. Share the hash to pin exactly which version of the attack someone ran.
 
-*(`astra` is cosmon's label for the second output line; the file it names is an
-[RO-Crate](https://www.researchobject.org/ro-crate/) manifest — a standard JSON
-description of the bundle's files. Both are informational; the `bundle:` hash is
-what pins the version.)*
+*(`astra` is cosmon's label for the second output line; the file it names is an [RO-Crate](https://www.researchobject.org/ro-crate/) manifest — a standard JSON description of the bundle's files. Both are informational; the `bundle:` hash is what pins the version.)*
 
 ---
 
 ## 14. Glossary — cosmon vocabulary & `cs` commands
 
-**cosmon** is the open-source engine that runs this package: it turns one hard
-problem into a DAG of typed, ordered steps, dispatches an AI worker to each, and
-records every step so the finished work carries an auditable trace. `cs` is its
-command-line tool. You do **not** need to know cosmon internals to run this
-spore; the terms below are the minimum.
+**cosmon** is the open-source engine that runs this package: it turns one hard problem into a DAG of typed, ordered steps, dispatches an AI worker to each, and records every step so the finished work carries an auditable trace. `cs` is its command-line tool. You do **not** need to know cosmon internals to run this spore; the terms below are the minimum.
 
 ### The ontology (house terms used in this README)
 
-- **molecule** — one unit of work with a durable identity: a task + its brief +
-  its recorded steps, stored on disk under `.cosmon/`. The atom of a cosmon run.
-- **formula** — the recipe a molecule follows: an ordered list of steps
-  (`implement → verify`, etc.). A formula is to a molecule what a class is to an
-  object.
+- **molecule** — one unit of work with a durable identity: a task + its brief + its recorded steps, stored on disk under `.cosmon/`. The atom of a cosmon run.
+- **formula** — the recipe a molecule follows: an ordered list of steps (`implement → verify`, etc.). A formula is to a molecule what a class is to an object.
 - **nucleate** — create one molecule from a formula (`cs nucleate <formula>`).
 - **tackle** — dispatch one AI worker onto one molecule (`cs tackle <id>`).
-- **polymer** — a whole DAG of molecules wired by `blocked-by` edges; the
-  finished shape of a multi-step mission. (This spore germinates a 16-to-18-node
-  polymer, plus up to 4 rounds of re-attack children when `rounds ≥ 2`.)
-- **mission** — informal name for a whole germinated polymer, referred to by its
-  root molecule id (e.g. `cs deps <mission>` walks that polymer's dependency
-  tree). "The mission" and "the polymer" name the same thing from two angles:
-  the goal versus its DAG.
-- **mission project** — the directory you `cs init` to hold **one** germinated
-  mission: its `.cosmon/state/` stores the molecules, the run-scoped output home
-  and the artifacts. It is deliberately *not* the spore's own directory (§1
-  step 2) — a template must not be written into by its own instances.
+- **polymer** — a whole DAG of molecules wired by `blocked-by` edges; the finished shape of a multi-step mission. (This spore germinates a 16-to-18-node polymer, plus up to 4 rounds of re-attack children when `rounds ≥ 2`.)
+- **mission** — informal name for a whole germinated polymer, referred to by its root molecule id (e.g. `cs deps <mission>` walks that polymer's dependency tree). "The mission" and "the polymer" name the same thing from two angles: the goal versus its DAG.
+- **mission project** — the directory you `cs init` to hold **one** germinated mission: its `.cosmon/state/` stores the molecules, the run-scoped output home and the artifacts. It is deliberately *not* the spore's own directory (§1 step 2) — a template must not be written into by its own instances.
 - **spore** — a shareable, parameterized *template* of a whole polymer: a fleet
-  + per-node formulas + a parameter schema + the DAG + an optional `.tla` seal.
-  This package is a spore.
-- **germinate** — expand a spore into a live polymer of real molecules
-  (`cs spore run`). Germinate is to a spore what nucleate is to a formula.
-- **fleet / crew** — the named set of AI agents (roles like `proofsmith`,
-  `skeptic`) a polymer runs on, declared in `fleet.toml`.
-- **drain / drainage** — a molecule *drains* when it and all its dependencies
-  reach a terminal `Done` state; the polymer drains when every node has.
-- **foaming** — uncontrolled growth of the DAG (unbounded child nucleation); the
-  seal's `Termination` property proves this spore cannot foam.
-- **emergent node** *(v4)* — a node that nucleates its own children *at runtime*
-  rather than at germination, bounded by a `[spore.node.bounds]` block
-  (`max_instances`). That cap is what makes a dynamic loop **sealable**: it turns
-  an unbounded foam into a finite, decidable model. The `re-attack` node is this
-  spore's only one.
-- **forward nucleation** *(v4)* — how a loop stays acyclic: round K is created at
-  runtime `blocked-by` round K−1, which already exists. There is never a cycle,
-  because a round only ever depends on the past. Germinating round 1 is the
-  loop's *initialisation*, not an edge back into it.
+  + per-node formulas + a parameter schema + the DAG + an optional `.tla` seal. This package is a spore.
+- **germinate** — expand a spore into a live polymer of real molecules (`cs spore run`). Germinate is to a spore what nucleate is to a formula.
+- **fleet / crew** — the named set of AI agents (roles like `proofsmith`, `skeptic`) a polymer runs on, declared in `fleet.toml`.
+- **drain / drainage** — a molecule *drains* when it and all its dependencies reach a terminal `Done` state; the polymer drains when every node has.
+- **foaming** — uncontrolled growth of the DAG (unbounded child nucleation); the seal's `Termination` property proves this spore cannot foam.
+- **emergent node** *(v4)* — a node that nucleates its own children *at runtime* rather than at germination, bounded by a `[spore.node.bounds]` block (`max_instances`). That cap is what makes a dynamic loop **sealable**: it turns an unbounded foam into a finite, decidable model. The `re-attack` node is this spore's only one.
+- **forward nucleation** *(v4)* — how a loop stays acyclic: round K is created at runtime `blocked-by` round K−1, which already exists. There is never a cycle, because a round only ever depends on the past. Germinating round 1 is the loop's *initialisation*, not an edge back into it.
 - **frontier** — the set of molecules currently ready to run (dependencies met).
-- **seal** — a TLA+ model (`spore.tla`) whose safety properties are mechanically
-  checked by TLC before germination; see §2 for exactly what it certifies.
+- **seal** — a TLA+ model (`spore.tla`) whose safety properties are mechanically checked by TLC before germination; see §2 for exactly what it certifies.
 
 ### The `cs` subcommands this README uses
 
@@ -1339,5 +824,4 @@ spore; the terms below are the minimum.
 | `cs fleet --help` | Show the fleet verbs available on your `cs`. |
 | `cs --version` | Print the `cs` build (include it in any bug report). |
 
-Run `cs <command> --help` for the full, authoritative options of any command;
-this table is a reading aid, not the spec.
+Run `cs <command> --help` for the full, authoritative options of any command; this table is a reading aid, not the spec.
