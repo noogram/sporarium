@@ -13,7 +13,12 @@ step, exact command, expected, observed, verdict (✅ / ❌ / ⚠️).
 
 ## P1 — Cold germination (the bare-handed recipient)
 
-In a pristine `bench/<version>/`:
+In a **separate recipient galaxy** — not in a directory inside this one.
+`cs init` refuses to nest galaxies, so a `bench/` under this repo cannot host a
+cold germination at all: any `cs spore validate` run from there silently borrows
+*this* galaxy's `.cosmon/`, which is the exact opposite of testing the parcel.
+The recipient galaxy is `spore-bench`; import the bundle by copying it in, and
+drive every command **from that galaxy's root**, never from inside the bundle.
 
 3. Unpack the package, `cs init`.
 4. `cs spore validate <spore>/spore.toml` with the **minimal** parameter set
