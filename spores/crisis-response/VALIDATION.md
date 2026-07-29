@@ -53,7 +53,17 @@ export TLA2TOOLS_JAR=…/cosmon/docs/specs/tla2tools.jar
 ```
 
 - **Result:** **"Model checking completed. No error has been found."**
-- **122204 distinct states** (319584 generated), **depth 26**, ~2 min 44 s (with
+- **122204 distinct states** (319584 generated), **depth 26**.
+- **Timing depends entirely on the invocation, and the two numbers are far
+  apart — budget for the slower one.** `-workers auto -XX:+UseParallelGC` (the
+  command above): **~2 min 44 s** on 16 cores. **`cs spore run` invokes TLC
+  single-worker** (`java -cp tla2tools.jar tlc2.TLC -config … …`, no `-workers`):
+  **~27 min** on the same machine, with **no output at all** for the whole
+  duration, because cosmon does not pass TLC's progress through. Measured on a
+  recipient-side acceptance run, 2026-07-29. If you verify by hand, use the
+  command above; if you let `cs spore run` do it, expect a long silence and do
+  not take it for a hang.
+- Figures below were measured with the parallel invocation (with
   the G4 realized-routing / model-lock / fallback-IOC properties; an earlier cut
   without them was 47324 distinct / depth 26).
 - All 21 named properties hold — 20 safety invariants conjoined into

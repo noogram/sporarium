@@ -338,6 +338,14 @@ java -XX:+UseParallelGC -cp "$TLA2TOOLS_JAR" tlc2.TLC \
 # expect: "Model checking completed. No error has been found."
 ```
 
+**Budget the wait, and do not mistake it for a hang.** `cs spore run` verifies
+the seal *before* it creates anything, and it invokes TLC **single-worker** with
+no progress output: on a 16-core machine that is **roughly half an hour of
+completely silent terminal** for this model (measured 27 min; the parallel
+command above does the same work in under 3). Nothing has germinated while you
+wait — that is the fail-closed gate doing its job, not a stall. Verify by hand
+with the command above if you want to watch it work.
+
 **Fail-closed if TLC is absent.** `cs spore run` on a released `cs` may report
 "TLC unavailable" and refuse unless you pass `--allow-unchecked-seal` (the status
 line stays honest: "seal: present, NOT verified"). **If you have no JVM at all,
