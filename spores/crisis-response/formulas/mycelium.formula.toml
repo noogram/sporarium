@@ -1,0 +1,30 @@
+formula = "mycelium"
+version = 1
+description = """
+Chronicle fold over the drained crisis-response polymer (`claude-sonnet-5`). A
+read-only observer: it reads what the run produced and folds 0-3 entries into
+docs/lore/CHRONICLES.md, only where a principle was actually illuminated, in
+Feynman register (a smart 8-year-old must grasp the image). Density is the value;
+an 80% rejection rate is healthy. It touches no gate leg and authors no
+conclusion — it narrates one that already happened.
+"""
+id_prefix = "myc"
+
+[vars.topic]
+description = "The chronicle task, stated in one or more sentences."
+required = true
+
+[tier]
+level = 0
+
+[[steps]]
+id = "fold"
+title = "Fold the run into 0-3 chronicle entries"
+description = """
+Read the drained DAG's artifacts. Fold into docs/lore/CHRONICLES.md at most
+three entries, each only if a principle was genuinely illuminated. Feynman
+register: concrete image before jargon, short sentences. Reject the entry if it
+is merely a summary. Write nothing that names a confidential third party.
+"""
+acceptance = "0-3 chronicle entries written in Feynman register, or an honest note that nothing warranted one."
+model = "claude-sonnet-5"

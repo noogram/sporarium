@@ -1,0 +1,45 @@
+formula = "task-work-mechanical"
+version = 1
+description = """
+Execute a concrete task on a MECHANICAL / OBSERVER model pin (`claude-sonnet-5`
+on every step). Same shape and same degradation story as
+`task-work-reasoning` (see that file's header). Bind the nodes whose value is
+faithful, low-variance transcription rather than depth: the always-on trace
+sidecar, evidence capture, the routing / sensitivity gate, the evidence-
+preservation gate, the fail-closed remediation gate and second-look, the human
+ratification leg, and the cross-notice consistency check.
+
+WHY MECHANICAL FOR THE GATES. A gate's job is to fold PRESENT legs into a
+fail-closed verdict, never to reason its way past an absent one. A lower-variance
+model is the right instrument for reading a manifest, checking a countersign is
+present, and refusing on absence — the reasoning already happened upstream, in
+the pincers this gate reads.
+"""
+id_prefix = "task"
+
+[vars.topic]
+description = "The concrete task to execute, stated in one or more sentences."
+required = true
+
+[tier]
+level = 0
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+description = "Do the work. Read the project's CLAUDE.md for conventions."
+acceptance = "Implementation complete, the leg's artifact emitted"
+model = "claude-sonnet-5"
+# adapter = "codex"
+
+[[steps]]
+id = "verify"
+title = "Verify and validate"
+description = """
+Verify the leg's artifact against its brief: internally consistent, every
+claim justified or flagged as a gap. Fix any issues.
+"""
+needs = ["implement"]
+acceptance = "Artifact verified against its brief"
+model = "claude-sonnet-5"
+# adapter = "codex"

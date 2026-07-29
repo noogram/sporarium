@@ -26,3 +26,11 @@ ISSUES.md
 
 # Internal deliberation tooling — local only, not part of the shipped scaffold.
 .cosmon/formulas/deep-think.formula.toml
+
+# Internal, confidential working material (strategy briefs for deliberations).
+# Never published: the public repo ships spores/ + protocol + README + licenses.
+internal/
+
+# Cross-galaxy CMB handoffs: internal working correspondence, often marked
+# "ne pas publier". This is a PUBLIC repo — the mailbox stays out of the tree.
+docs/cmb/

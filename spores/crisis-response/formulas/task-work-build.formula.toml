@@ -1,0 +1,39 @@
+formula = "task-work-build"
+version = 1
+description = """
+Execute a concrete task on a BUILD / AUTHORING model pin (`claude-opus-5` on
+every step). Same shape and same degradation story as `task-work-reasoning`
+(see that file's header for the model-pin / adapter-axis discipline). Bind the
+nodes whose value is careful construction rather than adversarial reasoning: the
+containment plan (a plan, never an action), the per-regime notice drafts, the
+final verdict bundle.
+"""
+id_prefix = "task"
+
+[vars.topic]
+description = "The concrete task to execute, stated in one or more sentences."
+required = true
+
+[tier]
+level = 0
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+description = "Do the work. Read the project's CLAUDE.md for conventions."
+acceptance = "Implementation complete, the leg's artifact emitted"
+model = "claude-opus-5"
+# adapter = "codex"
+
+[[steps]]
+id = "verify"
+title = "Verify and validate"
+description = """
+Verify the leg's artifact against its brief: internally consistent, every
+claim justified or flagged as a gap, sources cited where applicable. Fix any
+issues.
+"""
+needs = ["implement"]
+acceptance = "Artifact verified against its brief"
+model = "claude-opus-5"
+# adapter = "codex"

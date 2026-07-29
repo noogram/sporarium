@@ -1,0 +1,62 @@
+formula = "task-work-reasoning"
+version = 1
+description = """
+Execute a concrete task on a DEEP-REASONING model pin.
+
+Identical in shape to `task-work` (implement -> verify), but every step pins
+`model = "claude-opus-5"`. This is the ONLY in-zip channel that carries a
+per-node model allocation onto a recipient machine: a spore node has no `model`
+field, and the spore->nucleate path drops `--model`, so the allocation must
+travel on the FORMULA STEP. cosmon honors a per-step model pin, which ranks
+below an explicit `--model` / the `ANTHROPIC_MODEL` env override and above every
+default. Bind the nodes whose value is depth of reasoning to this formula: the
+two blind pincers (red-reconstruct, blue-investigate), the confrontation, the
+assigned dissenter.
+
+GRACEFUL DEGRADATION: the pin is inert until the molecule is TACKLED
+(germination and `cs spore validate` never touch it). A recipient who lacks
+`claude-opus-5` overrides it per-molecule with `cs tackle <id> --model <m>` or
+globally by exporting `ANTHROPIC_MODEL=<m>` before the run — both rank ABOVE
+this pin, so the DAG is unchanged and only the realized model differs.
+
+THE ADAPTER AXIS (commented on both steps). `model` names WHICH model; `adapter`
+names WHICH RUNTIME talks to it. They are INDEPENDENT axes; a `claude-*` id is
+not legal for the `codex` adapter, so if you split the two blind pincers across
+providers to widen input diversity (threat register B4), split by NODE, not by
+formula: point one pincer at a codex-pinned copy of this file with the `model`
+pin removed, and leave the other on claude. See README "Model & adapter access".
+"""
+id_prefix = "task"
+
+[vars.topic]
+description = "The concrete task to execute, stated in one or more sentences."
+required = true
+
+# Tier 0 — leaf formula, no child nucleation.
+[tier]
+level = 0
+
+[[steps]]
+id = "implement"
+title = "Implement the solution"
+description = "Do the work. Read the project's CLAUDE.md for conventions."
+acceptance = "Implementation complete, the leg's artifact emitted"
+model = "claude-opus-5"
+# CROSS-PROVIDER: to run THIS step on the OpenAI Codex CLI, uncomment `adapter`
+# AND comment out the `model` pin above — a `claude-*` id is not legal for the
+# `codex` adapter. With no model pin, the Codex CLI's own default applies.
+# adapter = "codex"
+
+[[steps]]
+id = "verify"
+title = "Verify and validate"
+description = """
+Verify the leg's artifact against its brief: internally consistent, every
+claim justified or flagged as a gap, sources cited where applicable. If the
+leg emitted code, run the relevant build/test and report the exit status
+honestly. Fix any issues.
+"""
+needs = ["implement"]
+acceptance = "Artifact verified against its brief; build/test (if code) reported honestly"
+model = "claude-opus-5"
+# adapter = "codex"

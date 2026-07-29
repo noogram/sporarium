@@ -1,0 +1,291 @@
+formula = "converge-crisis"
+version = 1
+description = """
+The bounded EPISTEMIC re-investigation loop of the `crisis-response` spore —
+re-open the two blind lines of inquiry round after round until they RECONCILE
+(the confrontation node labels the disputed findings resolved), or `rounds` is
+reached, at which point the loop BLOCKS and ESCALATES to a human. It never
+resolves a dispute by vote and it never touches an actuator.
+
+WHERE THE LOOP LIVES (load-bearing). This loop is confined to the EPISTEMIC
+sub-graph only — `confrontation` <-> `re-investigate`. It re-nucleates
+investigation FORWARD; it does NOT re-open evidence capture, it does NOT re-seal
+custody, and it has NO edge to the containment / remediation actuator path. The
+whole point of a bounded loop on the epistemic sub-graph is that reconstructing
+"what happened" can iterate safely, while acting on a live estate cannot.
+
+REUSE, DO NOT REINVENT — pure wiring over one existing primitive: `while` (the
+cosmon-shipped iterate-until-condition loop). Its `max_iterations` cap IS our
+`rounds` (a FATAL cap, not a benign exit). The node that binds this formula is
+`kind = "emergent"` with a `[spore.node.bounds]` block, exactly as the shipped
+`converge`-family nodes are.
+
+THE ROUND (K >= 2; nucleated FORWARD each iteration, strictly acyclic):
+      confrontation-{K-1} disputed items + each pincer's open questions
+      |
+      +--> red-reconstruct-K  (reasoning tier)  --+   these two run BLIND,
+      |    (fed ONLY the disputed items,          |   in PARALLEL, exactly as
+      |     never the other branch's prose)       |   round 1 did — the loop
+      +--> blue-investigate-K (reasoning tier)  --+   preserves the blinding
+                                                   v
+                                            confrontation-K (reasoning)
+                                                   |
+                          disputed set EMPTY (reconciled) ? --yes--> STOP
+                                                   |
+                                                  no -> round K+1
+                                          (all --blocked-by round K)
+
+STOP CONDITION (strict): the confrontation node reports the disputed set is
+EMPTY — every finding is now labelled convergent, red-only, or blue-only with a
+named basis, and nothing remains in open dispute. Reaching the same label by
+majority or seniority is NOT reconciliation. At `rounds` exhaustion: NEVER a
+silent pass -> `blocked` + human escalation. A still-disputed reconstruction is
+exactly the state in which no autonomous action may follow.
+
+THE BLINDING IS PRESERVED ACROSS ROUNDS. Each round's red and blue legs read the
+disputed items and their OWN prior artifact — never the other branch's. The
+comparative value of two independent lines of inquiry survives iteration only if
+neither reads the other; a round that let one branch consume the other's prose
+would forge convergence (threat register B4). The confrontation node is the ONLY
+place the two are ever read together.
+
+FAIL-CLOSED THROUGHOUT. An ABSENT or malformed confrontation label, or an
+open-dispute set that cannot be read, reads as NOT-RECONCILED, never as
+reconciliation. A gate that cannot fail is not a gate.
+
+ACYCLICITY BY INITIALISATION. Round 1 (the spore's pinned red-reconstruct ||
+blue-investigate -> confrontation) IS the initialisation. Each non-reconciled
+round nucleates FORWARD (fresh ids, `--blocked-by` the current round) -> a
+strictly acyclic temporal chain. `cs run --resident` absorbs the descendants.
+
+DRIVER-CAPABILITY PRECONDITION (fail closed). Forward nucleation needs a
+DRIVER-CAPABLE executor (a local `cs` carrying `wait` + `run --resident`). Step
+`preflight` checks this FIRST and refuses with a livable message rather than
+half-running the loop; at `rounds = 1` the loop nucleates NOTHING (round 1 IS the
+whole inquiry) and no driver is needed.
+
+VARIABLES:
+  - topic       : the re-investigation task (the spore interpolates the incident).
+  - incident    : short name of the incident under investigation.
+  - rounds      : runtime target -> `while` max_iterations. Exhaustion is
+                  `blocked` + escalation, never a silent pass. Must be <= the
+                  binding node's `[spore.node.bounds].max_instances` ceiling.
+
+ARTIFACT PATHS — rounds.md, reconcile-verdict.json, and each round's
+investigate-round-K/ directory are written to the MOLECULE STATE DIRECTORY (the
+`molecule_dir` field from `cs --json observe {mol_id}`). Round K writes ONLY
+under `investigate-round-K/`; the round index is what keeps rounds disjoint (the
+seal's NoResourceCollision has its teeth there). The FINAL round's reconcile
+verdict is ALSO written to a git-tracked relative path (see the binding node).
+"""
+id_prefix = "reinvestigate"
+freeze_on_last_step = false
+
+[vars.topic]
+description = "The re-investigation task, stated in one or more sentences."
+required = true
+
+[vars.incident]
+description = "Short name of the incident under investigation (briefs every round)."
+required = true
+
+[vars.rounds]
+description = "Runtime target for re-investigation rounds -> `while` max_iterations. 1 => no round is nucleated (round 1 is the whole inquiry). Exhaustion is `blocked` + escalation, never a silent pass. MUST be <= the binding node's [spore.node.bounds].max_instances."
+default = "1"
+
+# Tier 1 — the spore's ONE non-Tier-0 node: it nucleates children (red || blue ->
+# confrontation) FORWARD each round. `measure = "iterations"` is the finite bound
+# = `rounds`, enforced by the `while` max_iterations cap.
+[tier]
+level = 1
+measure = "iterations"
+
+[[steps]]
+id = "preflight"
+title = "Refuse fast if the executor cannot drive a forward-nucleating loop"
+description = """
+MOLECULE_DIR is the `molecule_dir` field from `cs --json observe {mol_id}` —
+NEVER the worktree.
+
+This loop nucleates children mid-run and waits on them. That needs a
+DRIVER-CAPABLE executor. Check BEFORE doing anything else, and refuse with a
+livable message rather than half-running:
+
+  1. `cs wait --help` must succeed (a frozen pilot surface has no `wait`).
+  2. `cs run --help` must advertise `--resident`.
+
+If EITHER fails, write MOLECULE_DIR/reconcile-verdict.json with
+{"verdict": "BLOCKED", "exit_reason": "executor-not-driver-capable", ...} and
+collapse this molecule with a livable "re-germinate with rounds=1" message. Do
+NOT attempt the loop.
+
+BOUND CHECK. Parse ${rounds} (default 1). If it is not a positive integer, or it
+exceeds the binding node's `[spore.node.bounds].max_instances` ceiling declared
+in spore.toml, collapse with "re-investigate: rounds exceeds the sealed
+max_instances ceiling". Defence in depth: `cs spore validate` should have refused
+already; this is the second lock.
+
+EARLY EXIT AT rounds=1. If ${rounds} = 1 the loop nucleates NOTHING: round 1 (the
+spore's pinned red-reconstruct || blue-investigate -> confrontation) already ran
+and IS the whole inquiry. Write rounds.md recording "rounds=1: no re-investigation
+round nucleated", jump straight to `emit-verdict`, and fold round 1's own
+confrontation label.
+"""
+acceptance = "The executor was proven driver-capable, or the molecule collapsed with the livable re-germinate-with-rounds=1 message. ${rounds} parsed, positive, <= the sealed ceiling. At rounds=1 nothing was nucleated and rounds.md says so."
+model = "claude-sonnet-5"
+# adapter = "codex"
+
+[[steps]]
+id = "init-ledger"
+title = "Initialise the round ledger and read round 1's confrontation label"
+description = """
+Round 1 already ran: it is the spore's pinned `confrontation` node, upstream of
+this one. Germinating THIS molecule is the loop's initialisation — read round 1,
+do not re-run it.
+
+  1. Create MOLECULE_DIR/rounds.md with the header table:
+       | round | red id | blue id | confrontation id | disputed count | reconciled? |
+     and record ${rounds} and ${incident}.
+  2. Read round 1's confrontation label (convergent / red-only / blue-only /
+     disputed per finding). FAIL-CLOSED: absent or malformed => record round 1 as
+     NOT-RECONCILED with reason "missing/malformed confrontation label".
+  3. Derive the disputed set: the findings still labelled `disputed`.
+  4. Append the round-1 row.
+
+If round 1 already reconciled (empty disputed set), the stop condition holds at
+the top of iteration 1 — nucleate NOTHING and go straight to `emit-verdict`.
+"""
+needs = ["preflight"]
+acceptance = "rounds.md initialised with the round-1 row carrying the confrontation label read from the UPSTREAM node (never re-run). Absent/malformed label recorded NOT-RECONCILED. Disputed set extracted. If round 1 reconciled, no round nucleated."
+model = "claude-sonnet-5"
+# adapter = "codex"
+
+[[steps]]
+id = "loop-until-reconciled"
+title = "Re-investigate forward until reconciled, or block at the rounds cap"
+description = """
+Drive the loop with the `while` discipline — do NOT re-implement it. The
+condition is "disputed set non-empty"; the body is "re-open the two BLIND lines
+of inquiry, fed ONLY the disputed items".
+
+Pseudocode (round 1 already read by `init-ledger`):
+    round = 1
+    while round < ${rounds}:
+        if disputed[round] is empty:
+            break                       # reconciled — the natural early exit
+
+        K = round + 1
+        mkdir MOLECULE_DIR/investigate-round-K/     # the ONLY path round K writes
+
+        # (a) red line — the attacker's-eye reconstruction, BLIND to blue
+        red_id = cs nucleate task-work-reasoning --kind task \\
+            --decayed-from {this_mol_id} --tag temp:warm \\
+            --tag reinvestigate-round:K \\
+            --var topic="CRISIS-RESPONSE ${incident} — RE-RECONSTRUCT round K.
+              Read ONLY investigate-round-<K-1>/disputed.md (the still-disputed
+              findings) and YOUR OWN prior reconstruction. You are BLIND to the
+              blue line: do not read, open, or reason about its artifact — it is
+              not yours to read, and the DAG does not hand it to you. Re-derive
+              the attacker's-eye account of the disputed findings from the sealed
+              evidence. Reconstruct only at the granularity needed for remediation
+              and attribution — NEVER a working payload. Write
+              investigate-round-K/red-reconstruct.md, TLP:AMBER by default."
+
+        # (b) blue line — the defender's-eye investigation, BLIND to red
+        blue_id = cs nucleate task-work-reasoning --kind task \\
+            --decayed-from {this_mol_id} --tag temp:warm \\
+            --tag reinvestigate-round:K \\
+            --var topic="CRISIS-RESPONSE ${incident} — RE-INVESTIGATE round K.
+              Read ONLY investigate-round-<K-1>/disputed.md and YOUR OWN prior
+              investigation. You are BLIND to the red line. Re-derive the
+              defender's-eye account (scope, blast radius, affected assets) of the
+              disputed findings from the sealed evidence. Mark each input
+              attacker-writable vs attacker-non-writable. Write
+              investigate-round-K/blue-investigate.md, TLP:AMBER by default."
+
+        # (c) the round's confrontation — the ONLY place both are read together
+        confront_id = cs nucleate task-work-reasoning --kind task \\
+            --blocked-by red_id --blocked-by blue_id \\
+            --decayed-from {this_mol_id} --tag temp:warm \\
+            --tag reinvestigate-round:K \\
+            --var topic="CRISIS-RESPONSE ${incident} — CONFRONTATION round K.
+              Now, and only now, read BOTH round-K lines. Label every disputed
+              finding: convergent / red-only / blue-only / disputed, each with its
+              basis. DO NOT resolve a dispute by vote, seniority, or which branch
+              wrote more — disagreement is the safe state. For every finding that
+              stays disputed, name the out-of-band, attacker-non-writable check
+              that would settle it. Write investigate-round-K/confrontation.md and
+              investigate-round-K/disputed.md (the residual disputed set)."
+
+        cs wait <every id of round K>       # NEVER advance while a round runs
+        read investigate-round-K/disputed.md -> disputed[K]
+        # FAIL-CLOSE: absent or malformed => NOT reconciled
+        append rounds.md row for round K
+        round = K
+
+    if disputed[round] non-empty:
+        # exhaustion — NEVER a silent pass
+        record exit_reason = "rounds-exhausted"; the verdict below is BLOCKED
+
+MANDATORY:
+  1. Every nucleation carries `--decayed-from {this_mol_id}` and
+     `--tag reinvestigate-round:<K>`.
+  2. NEVER advance a round while the previous is still running — `cs wait` first.
+  3. NEVER skip the `rounds` check — a runaway loop is the primary safety hazard.
+  4. A missing confrontation label / disputed set is NOT reconciled.
+  5. Each round's red and blue legs read ONLY the disputed set and their own prior
+     artifact — NEVER the other branch's. The blinding survives iteration.
+  6. Round K writes ONLY under `investigate-round-K/`.
+  7. This loop NEVER nucleates a containment or remediation node. It re-opens
+     inquiry only; acting is downstream, behind the fail-closed human gate.
+"""
+needs = ["init-ledger"]
+acceptance = "rounds.md records every round with its red/blue/confrontation ids, disputed count, and reconciled? flag. The loop exited EARLY the moment the disputed set was empty, or ran to ${rounds} and recorded exhaustion (never a silent pass). Each non-reconciled round nucleated red || blue -> confrontation FORWARD, strictly acyclic, blinding preserved. No containment/remediation node was ever nucleated. Every round K wrote only under investigate-round-K/."
+model = "claude-opus-5"
+# adapter = "codex"
+
+[[steps]]
+id = "emit-verdict"
+title = "Emit the fail-closed reconciliation verdict the containment path reads"
+description = """
+Fold the loop into the machine-readable verdict the downstream containment-plan
+and remediation-gate read. Write MOLECULE_DIR/reconcile-verdict.json:
+
+  {
+    "verdict": "RECONCILED" | "BLOCKED",
+    "rounds_run": <k>,
+    "rounds_target": ${rounds},
+    "exit_reason": "reconciled" | "rounds-exhausted"
+                   | "executor-not-driver-capable",
+    "final_round": {
+      "round": <k>,
+      "disputed_count": <n>,
+      "labels": { "convergent": <n>, "red_only": <n>, "blue_only": <n>, "disputed": <n> },
+      "artifacts": {
+        "confrontation": "<path to the final round's confrontation.md>",
+        "disputed": "<path to the final round's disputed.md>"
+      }
+    },
+    "history": [ per-round {round, disputed_count} ]
+  }
+
+verdict "RECONCILED" iff the disputed set became EMPTY within ${rounds}.
+Exhaustion => "BLOCKED" with exit_reason "rounds-exhausted" and an explicit
+ESCALATION note naming the findings that never reconciled and the out-of-band
+checks that would settle them.
+
+FAIL-CLOSED: a missing or malformed reconcile-verdict.json is read downstream as
+BLOCKED. Note what BLOCKED means here: NOT that the incident is unsolved, but that
+the two independent lines of inquiry did not converge — which is precisely the
+state in which no autonomous action may follow. Convergence, when it is reached,
+INFORMS the human; it never gates the irreversible action on its own.
+
+Also write MOLECULE_DIR/synthesis.md: the round-by-round trajectory in plain
+prose — whether the disputed set SHRANK (real progress) or merely churned (the
+honest signal that more rounds will not help) — and, ALSO, to the git-tracked
+relative path the binding node names, the FINAL round's reconcile-verdict.json.
+"""
+needs = ["loop-until-reconciled"]
+acceptance = "reconcile-verdict.json written with verdict / rounds_run / rounds_target / exit_reason / final_round (including the artifacts map) / history. RECONCILED only when the disputed set became empty within target; exhaustion is BLOCKED with a named escalation, never a silent pass. synthesis.md carries the trajectory and says honestly whether the disputed set shrank or churned. The final verdict was also written to the git-tracked relative path."
+model = "claude-opus-5"
+# adapter = "codex"
